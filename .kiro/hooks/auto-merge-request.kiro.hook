@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Auto Merge Request",
+  "description": "Automatically creates a merge request after each completed task or significant code change",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "cmd/**/*.go",
+      "internal/**/*.go",
+      "*.go",
+      "go.mod",
+      "go.sum"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A task has been completed with changes to Go source files. Please create a merge request with an appropriate title and description summarizing the changes made. Include details about what functionality was added, modified, or fixed."
+  }
+}
