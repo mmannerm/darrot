@@ -21,6 +21,14 @@ func TestLoad(t *testing.T) {
 			expectedCfg: &Config{
 				DiscordToken: "test-token-123",
 				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					GoogleCloudCredentialsPath: "",
+					DefaultVoice:               "en-US-Standard-A",
+					DefaultSpeed:               1.0,
+					DefaultVolume:              1.0,
+					MaxQueueSize:               10,
+					MaxMessageLength:           500,
+				},
 			},
 		},
 		{
@@ -33,6 +41,14 @@ func TestLoad(t *testing.T) {
 			expectedCfg: &Config{
 				DiscordToken: "test-token-456",
 				LogLevel:     "DEBUG",
+				TTS: TTSConfig{
+					GoogleCloudCredentialsPath: "",
+					DefaultVoice:               "en-US-Standard-A",
+					DefaultSpeed:               1.0,
+					DefaultVolume:              1.0,
+					MaxQueueSize:               10,
+					MaxMessageLength:           500,
+				},
 			},
 		},
 		{
@@ -103,6 +119,17 @@ func TestLoad(t *testing.T) {
 			if config.LogLevel != tt.expectedCfg.LogLevel {
 				t.Errorf("Load() LogLevel = %v, want %v", config.LogLevel, tt.expectedCfg.LogLevel)
 			}
+
+			// Check TTS configuration
+			if config.TTS.DefaultVoice != tt.expectedCfg.TTS.DefaultVoice {
+				t.Errorf("Load() TTS.DefaultVoice = %v, want %v", config.TTS.DefaultVoice, tt.expectedCfg.TTS.DefaultVoice)
+			}
+			if config.TTS.DefaultSpeed != tt.expectedCfg.TTS.DefaultSpeed {
+				t.Errorf("Load() TTS.DefaultSpeed = %v, want %v", config.TTS.DefaultSpeed, tt.expectedCfg.TTS.DefaultSpeed)
+			}
+			if config.TTS.DefaultVolume != tt.expectedCfg.TTS.DefaultVolume {
+				t.Errorf("Load() TTS.DefaultVolume = %v, want %v", config.TTS.DefaultVolume, tt.expectedCfg.TTS.DefaultVolume)
+			}
 		})
 	}
 }
@@ -118,6 +145,13 @@ func TestConfig_Validate(t *testing.T) {
 			config: &Config{
 				DiscordToken: "valid-token",
 				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					DefaultVoice:     "en-US-Standard-A",
+					DefaultSpeed:     1.0,
+					DefaultVolume:    1.0,
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
 			},
 			wantErr: false,
 		},
@@ -126,6 +160,12 @@ func TestConfig_Validate(t *testing.T) {
 			config: &Config{
 				DiscordToken: "",
 				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					DefaultSpeed:     1.0,
+					DefaultVolume:    1.0,
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
 			},
 			wantErr: true,
 		},
@@ -134,6 +174,12 @@ func TestConfig_Validate(t *testing.T) {
 			config: &Config{
 				DiscordToken: "   ",
 				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					DefaultSpeed:     1.0,
+					DefaultVolume:    1.0,
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
 			},
 			wantErr: true,
 		},
@@ -142,6 +188,12 @@ func TestConfig_Validate(t *testing.T) {
 			config: &Config{
 				DiscordToken: "valid-token",
 				LogLevel:     "INVALID",
+				TTS: TTSConfig{
+					DefaultSpeed:     1.0,
+					DefaultVolume:    1.0,
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
 			},
 			wantErr: true,
 		},
@@ -150,8 +202,70 @@ func TestConfig_Validate(t *testing.T) {
 			config: &Config{
 				DiscordToken: "valid-token",
 				LogLevel:     "warn",
+				TTS: TTSConfig{
+					DefaultSpeed:     1.0,
+					DefaultVolume:    1.0,
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
 			},
 			wantErr: false,
+		},
+		{
+			name: "invalid_tts_speed_too_low",
+			config: &Config{
+				DiscordToken: "valid-token",
+				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					DefaultSpeed:     0.1, // Too low
+					DefaultVolume:    1.0,
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid_tts_speed_too_high",
+			config: &Config{
+				DiscordToken: "valid-token",
+				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					DefaultSpeed:     5.0, // Too high
+					DefaultVolume:    1.0,
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid_tts_volume_too_high",
+			config: &Config{
+				DiscordToken: "valid-token",
+				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					DefaultSpeed:     1.0,
+					DefaultVolume:    3.0, // Too high
+					MaxQueueSize:     10,
+					MaxMessageLength: 500,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid_queue_size_too_high",
+			config: &Config{
+				DiscordToken: "valid-token",
+				LogLevel:     "INFO",
+				TTS: TTSConfig{
+					DefaultSpeed:     1.0,
+					DefaultVolume:    1.0,
+					MaxQueueSize:     200, // Too high
+					MaxMessageLength: 500,
+				},
+			},
+			wantErr: true,
 		},
 	}
 
