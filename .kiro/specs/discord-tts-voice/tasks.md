@@ -149,7 +149,12 @@
   - Write unit tests for configuration command handlers
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 7.1, 7.4_
 
-- [ ] 13. Implement message monitoring and processing
+- [x] 13. Implement message monitoring and processing
+
+
+
+
+
   - Create message event handlers to monitor paired text channels
   - Implement filtering logic to only process messages from opted-in users
   - Add message preprocessing (author name inclusion, emoji handling)
@@ -157,7 +162,12 @@
   - Write unit tests for message monitoring and filtering
   - _Requirements: 2.1, 2.2, 2.4, 2.5_
 
-- [ ] 14. Create TTS processing pipeline
+- [x] 14. Create TTS processing pipeline
+
+
+
+
+
   - Implement background processing to convert queued messages to speech
   - Integrate TTSManager with VoiceManager for audio playback
   - Add error handling for TTS conversion failures

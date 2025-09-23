@@ -75,3 +75,18 @@ type ConfigService interface {
 	GetMaxQueueSize(guildID string) (int, error)
 	ValidateConfig(config *GuildTTSConfig) error
 }
+
+// TTSProcessor handles the background processing pipeline for TTS conversion and playback
+type TTSProcessor interface {
+	Start() error
+	Stop() error
+	StartGuildProcessing(guildID string) error
+	StopGuildProcessing(guildID string) error
+	GetProcessingStatus(guildID string) (bool, error)
+	GetActiveGuilds() []string
+	SkipCurrentMessage(guildID string) error
+	PauseProcessing(guildID string) error
+	ResumeProcessing(guildID string) error
+	ClearQueue(guildID string) error
+	GetQueueSize(guildID string) int
+}
