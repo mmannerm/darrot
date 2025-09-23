@@ -21,6 +21,7 @@ type JoinCommandHandler struct {
 	channelService    ChannelService
 	permissionService PermissionService
 	userService       UserService
+	errorRecovery     *ErrorRecoveryManager
 	logger            *log.Logger
 }
 
@@ -30,6 +31,7 @@ func NewJoinCommandHandler(
 	channelService ChannelService,
 	permissionService PermissionService,
 	userService UserService,
+	errorRecovery *ErrorRecoveryManager,
 	logger *log.Logger,
 ) *JoinCommandHandler {
 	return &JoinCommandHandler{
@@ -37,6 +39,7 @@ func NewJoinCommandHandler(
 		channelService:    channelService,
 		permissionService: permissionService,
 		userService:       userService,
+		errorRecovery:     errorRecovery,
 		logger:            logger,
 	}
 }
@@ -116,9 +119,17 @@ func (h *JoinCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interacti
 		}
 	}
 
-	// Join the voice channel
+	// Join the voice channel with error recovery
 	_, err := h.voiceManager.JoinChannel(guildID, voiceChannelID)
 	if err != nil {
+		h.logger.Printf("Initial voice channel join failed for guild %s: %v", guildID, err)
+
+		// Create user-friendly error message
+		if h.errorRecovery != nil {
+			userMessage := h.errorRecovery.CreateUserFriendlyErrorMessage(err, guildID)
+			return h.respondError(s, i, userMessage)
+		}
+
 		return h.respondError(s, i, fmt.Sprintf("Failed to join voice channel: %v", err))
 	}
 
@@ -178,6 +189,7 @@ type LeaveCommandHandler struct {
 	voiceManager      VoiceManager
 	channelService    ChannelService
 	permissionService PermissionService
+	errorRecovery     *ErrorRecoveryManager
 	logger            *log.Logger
 }
 
@@ -186,12 +198,14 @@ func NewLeaveCommandHandler(
 	voiceManager VoiceManager,
 	channelService ChannelService,
 	permissionService PermissionService,
+	errorRecovery *ErrorRecoveryManager,
 	logger *log.Logger,
 ) *LeaveCommandHandler {
 	return &LeaveCommandHandler{
 		voiceManager:      voiceManager,
 		channelService:    channelService,
 		permissionService: permissionService,
+		errorRecovery:     errorRecovery,
 		logger:            logger,
 	}
 }
@@ -227,8 +241,16 @@ func (h *LeaveCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interact
 
 	voiceChannelID := connection.ChannelID
 
-	// Leave the voice channel
+	// Leave the voice channel with error recovery
 	if err := h.voiceManager.LeaveChannel(guildID); err != nil {
+		h.logger.Printf("Failed to leave voice channel for guild %s: %v", guildID, err)
+
+		// Create user-friendly error message
+		if h.errorRecovery != nil {
+			userMessage := h.errorRecovery.CreateUserFriendlyErrorMessage(err, guildID)
+			return h.respondError(s, i, userMessage)
+		}
+
 		return h.respondError(s, i, fmt.Sprintf("Failed to leave voice channel: %v", err))
 	}
 
