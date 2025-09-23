@@ -6,6 +6,45 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+// mockConfigServiceForIntegration provides a simple config service for integration
+type mockConfigServiceForIntegration struct{}
+
+func (m *mockConfigServiceForIntegration) GetGuildConfig(guildID string) (*GuildTTSConfig, error) {
+	return nil, nil
+}
+
+func (m *mockConfigServiceForIntegration) SetGuildConfig(guildID string, config *GuildTTSConfig) error {
+	return nil
+}
+
+func (m *mockConfigServiceForIntegration) SetRequiredRoles(guildID string, roleIDs []string) error {
+	return nil
+}
+
+func (m *mockConfigServiceForIntegration) GetRequiredRoles(guildID string) ([]string, error) {
+	return nil, nil
+}
+
+func (m *mockConfigServiceForIntegration) SetTTSSettings(guildID string, settings TTSConfig) error {
+	return nil
+}
+
+func (m *mockConfigServiceForIntegration) GetTTSSettings(guildID string) (*TTSConfig, error) {
+	return nil, nil
+}
+
+func (m *mockConfigServiceForIntegration) SetMaxQueueSize(guildID string, size int) error {
+	return nil
+}
+
+func (m *mockConfigServiceForIntegration) GetMaxQueueSize(guildID string) (int, error) {
+	return 10, nil
+}
+
+func (m *mockConfigServiceForIntegration) ValidateConfig(config *GuildTTSConfig) error {
+	return nil
+}
+
 // TTSCommandIntegration provides methods to integrate TTS command handlers with the bot
 type TTSCommandIntegration struct {
 	joinHandler  *JoinCommandHandler
@@ -26,12 +65,26 @@ func NewTTSCommandIntegration(
 	userService := NewUserService(storage)
 	voiceManager := NewVoiceManager(session)
 
+	// Create message queue and config service (needed for error recovery)
+	messageQueue := NewMessageQueue()
+	configService := &mockConfigServiceForIntegration{}
+
+	// Create TTS manager (needed for error recovery)
+	ttsManager, err := NewGoogleTTSManager(messageQueue)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create error recovery manager
+	errorRecovery := NewErrorRecoveryManager(voiceManager, ttsManager, messageQueue, configService)
+
 	// Create command handlers
 	joinHandler := NewJoinCommandHandler(
 		voiceManager,
 		channelService,
 		permissionService,
 		userService,
+		errorRecovery,
 		logger,
 	)
 
@@ -39,6 +92,7 @@ func NewTTSCommandIntegration(
 		voiceManager,
 		channelService,
 		permissionService,
+		errorRecovery,
 		logger,
 	)
 

@@ -2,6 +2,7 @@ package tts
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -112,7 +113,7 @@ func (vm *voiceManager) GetConnection(guildID string) (*VoiceConnection, bool) {
 	return connection, exists
 }
 
-// PlayAudio plays audio data through the voice connection
+// PlayAudio plays audio data through the voice connection with enhanced error handling
 func (vm *voiceManager) PlayAudio(guildID string, audioData []byte) error {
 	vm.mutex.RLock()
 	connection, exists := vm.connections[guildID]
@@ -126,9 +127,9 @@ func (vm *voiceManager) PlayAudio(guildID string, audioData []byte) error {
 		return fmt.Errorf("voice connection is nil for guild %s", guildID)
 	}
 
-	// Check if connection exists
-	if connection.Connection == nil {
-		return fmt.Errorf("voice connection is nil for guild %s", guildID)
+	// Check if connection is ready
+	if connection.Connection.OpusSend == nil {
+		return fmt.Errorf("voice connection not ready for guild %s", guildID)
 	}
 
 	// Set playing status
@@ -136,23 +137,22 @@ func (vm *voiceManager) PlayAudio(guildID string, audioData []byte) error {
 	connection.IsPlaying = true
 	vm.mutex.Unlock()
 
-	// Send audio data
-	select {
-	case connection.Connection.OpusSend <- audioData:
-		// Audio sent successfully
-	case <-time.After(5 * time.Second):
+	// Ensure playing status is reset regardless of outcome
+	defer func() {
 		vm.mutex.Lock()
 		connection.IsPlaying = false
 		vm.mutex.Unlock()
+	}()
+
+	// Send audio data with timeout and error handling
+	select {
+	case connection.Connection.OpusSend <- audioData:
+		// Audio sent successfully
+		log.Printf("Successfully sent %d bytes of audio data for guild %s", len(audioData), guildID)
+		return nil
+	case <-time.After(5 * time.Second):
 		return fmt.Errorf("timeout sending audio data for guild %s", guildID)
 	}
-
-	// Reset playing status
-	vm.mutex.Lock()
-	connection.IsPlaying = false
-	vm.mutex.Unlock()
-
-	return nil
 }
 
 // IsConnected checks if there's an active voice connection for the guild
@@ -200,7 +200,7 @@ func (vm *voiceManager) GetActiveConnections() []string {
 	return guildIDs
 }
 
-// RecoverConnection attempts to recover a failed voice connection
+// RecoverConnection attempts to recover a failed voice connection with enhanced error handling
 func (vm *voiceManager) RecoverConnection(guildID string) error {
 	vm.mutex.Lock()
 	defer vm.mutex.Unlock()
@@ -212,37 +212,55 @@ func (vm *voiceManager) RecoverConnection(guildID string) error {
 
 	// Attempt to rejoin the same channel
 	channelID := connection.ChannelID
+	log.Printf("Attempting to recover voice connection for guild %s, channel %s", guildID, channelID)
 
 	// Clean up the old connection
 	if err := vm.leaveChannelInternal(guildID); err != nil {
-		// Log error but continue with recovery attempt
+		log.Printf("Warning: failed to clean up old connection for guild %s: %v", guildID, err)
+		// Continue with recovery attempt despite cleanup failure
 	}
 
-	// Try to rejoin
-	voiceConn, err := vm.session.ChannelVoiceJoin(guildID, channelID, false, true)
-	if err != nil {
-		return fmt.Errorf("failed to recover voice connection for guild %s: %w", guildID, err)
+	// Try to rejoin with timeout
+	done := make(chan error, 1)
+	go func() {
+		voiceConn, err := vm.session.ChannelVoiceJoin(guildID, channelID, false, true)
+		if err != nil {
+			done <- fmt.Errorf("failed to rejoin voice channel: %w", err)
+			return
+		}
+
+		// Wait for connection setup
+		time.Sleep(100 * time.Millisecond)
+
+		// Create new connection wrapper
+		newConnection := &VoiceConnection{
+			GuildID:    guildID,
+			ChannelID:  channelID,
+			Connection: voiceConn,
+			IsPlaying:  false,
+			IsPaused:   false,
+			Queue: &AudioQueue{
+				Items:   make([][]byte, 0),
+				MaxSize: 10,
+				Current: 0,
+			},
+		}
+
+		vm.connections[guildID] = newConnection
+		done <- nil
+	}()
+
+	// Wait for connection with timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			return fmt.Errorf("voice connection recovery failed for guild %s: %w", guildID, err)
+		}
+		log.Printf("Successfully recovered voice connection for guild %s", guildID)
+		return nil
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("voice connection recovery timed out for guild %s", guildID)
 	}
-
-	// Wait for connection setup
-	time.Sleep(100 * time.Millisecond)
-
-	// Create new connection wrapper
-	newConnection := &VoiceConnection{
-		GuildID:    guildID,
-		ChannelID:  channelID,
-		Connection: voiceConn,
-		IsPlaying:  false,
-		IsPaused:   false,
-		Queue: &AudioQueue{
-			Items:   make([][]byte, 0),
-			MaxSize: 10,
-			Current: 0,
-		},
-	}
-
-	vm.connections[guildID] = newConnection
-	return nil
 }
 
 // HealthCheck performs a health check on all voice connections

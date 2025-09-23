@@ -16,6 +16,9 @@ type ttsProcessor struct {
 	configService ConfigService
 	userService   UserService
 
+	// Error recovery
+	errorRecovery *ErrorRecoveryManager
+
 	// Processing control
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -43,7 +46,7 @@ type guildProcessor struct {
 func NewTTSProcessor(ttsManager TTSManager, voiceManager VoiceManager, messageQueue MessageQueue, configService ConfigService, userService UserService) TTSProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &ttsProcessor{
+	processor := &ttsProcessor{
 		ttsManager:         ttsManager,
 		voiceManager:       voiceManager,
 		messageQueue:       messageQueue,
@@ -55,11 +58,21 @@ func NewTTSProcessor(ttsManager TTSManager, voiceManager VoiceManager, messageQu
 		processingInterval: time.Millisecond * 500, // Check for new messages every 500ms
 		inactivityTimeout:  5 * time.Minute,        // Requirement 4.4
 	}
+
+	// Initialize error recovery manager
+	processor.errorRecovery = NewErrorRecoveryManager(voiceManager, ttsManager, messageQueue, configService)
+
+	return processor
 }
 
 // Start begins the background TTS processing pipeline
 func (tp *ttsProcessor) Start() error {
 	log.Println("Starting TTS processing pipeline")
+
+	// Start error recovery manager
+	if err := tp.errorRecovery.Start(); err != nil {
+		return fmt.Errorf("failed to start error recovery manager: %w", err)
+	}
 
 	tp.wg.Add(1)
 	go tp.processingLoop()
@@ -73,6 +86,11 @@ func (tp *ttsProcessor) Stop() error {
 
 	tp.cancel()
 	tp.wg.Wait()
+
+	// Stop error recovery manager
+	if err := tp.errorRecovery.Stop(); err != nil {
+		log.Printf("Error stopping error recovery manager: %v", err)
+	}
 
 	return nil
 }
@@ -233,84 +251,36 @@ func (tp *ttsProcessor) processNextMessage(guildID string, processor *guildProce
 		log.Printf("Truncated long message for guild %s", guildID)
 	}
 
-	// Convert to speech with error handling (Requirement 9.2)
-	audioData, err := tp.convertWithRetry(messageText, config, guildID)
+	// Convert to speech with comprehensive error handling (Requirement 9.2)
+	audioData, err := tp.ttsManager.ConvertToSpeech(messageText, "", config)
 	if err != nil {
-		log.Printf("Failed to convert message to speech for guild %s: %v", guildID, err)
-		return // Skip this message and continue
+		log.Printf("Initial TTS conversion failed for guild %s: %v", guildID, err)
+
+		// Use comprehensive error recovery
+		audioData, err = tp.errorRecovery.HandleTTSFailure(messageText, "", config, guildID)
+		if err != nil {
+			log.Printf("TTS conversion failed after comprehensive recovery for guild %s: %v", guildID, err)
+			return // Skip this message and continue
+		}
 	}
 
-	// Play audio through voice connection
+	// Play audio through voice connection with error recovery
 	err = tp.voiceManager.PlayAudio(guildID, audioData)
 	if err != nil {
-		log.Printf("Failed to play audio for guild %s: %v", guildID, err)
+		log.Printf("Audio playback failed for guild %s: %v", guildID, err)
 
-		// Attempt connection recovery (Requirement 9.1)
-		if err := tp.voiceManager.RecoverConnection(guildID); err != nil {
-			log.Printf("Failed to recover voice connection for guild %s: %v", guildID, err)
+		// Use comprehensive audio playback recovery (Requirement 9.1, 9.2)
+		if recoveryErr := tp.errorRecovery.HandleAudioPlaybackFailure(guildID, audioData); recoveryErr != nil {
+			log.Printf("Audio playback recovery failed for guild %s: %v", guildID, recoveryErr)
+
+			// Create user-friendly error message (Requirement 9.3)
+			userMessage := tp.errorRecovery.CreateUserFriendlyErrorMessage(recoveryErr, guildID)
+			log.Printf("User-friendly error for guild %s: %s", guildID, userMessage)
 		}
 		return
 	}
 
 	log.Printf("Successfully processed TTS message for guild %s: %d bytes audio", guildID, len(audioData))
-}
-
-// convertWithRetry attempts TTS conversion with error recovery
-func (tp *ttsProcessor) convertWithRetry(text string, config TTSConfig, guildID string) ([]byte, error) {
-	// First attempt
-	audioData, err := tp.ttsManager.ConvertToSpeech(text, "", config)
-	if err == nil {
-		return audioData, nil
-	}
-
-	log.Printf("Initial TTS conversion failed for guild %s: %v", guildID, err)
-
-	// Check if error is retryable
-	if !IsRetryableError(err) && IsFatalError(err) {
-		return nil, fmt.Errorf("fatal TTS error: %w", err)
-	}
-
-	// Retry with fallback mechanisms
-	maxRetries := 3
-	retryDelay := time.Second * 2
-
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		log.Printf("Retrying TTS conversion for guild %s, attempt %d/%d", guildID, attempt, maxRetries)
-		time.Sleep(retryDelay)
-
-		audioData, err = tp.ttsManager.ConvertToSpeech(text, "", config)
-		if err == nil {
-			return audioData, nil
-		}
-
-		log.Printf("TTS retry attempt %d failed for guild %s: %v", attempt, guildID, err)
-	}
-
-	// Try with fallback voice
-	fallbackConfig := TTSConfig{
-		Voice:  DefaultVoice,
-		Speed:  DefaultTTSSpeed,
-		Volume: DefaultTTSVolume,
-		Format: config.Format,
-	}
-
-	log.Printf("Trying fallback configuration for guild %s", guildID)
-	audioData, err = tp.ttsManager.ConvertToSpeech(text, "", fallbackConfig)
-	if err == nil {
-		return audioData, nil
-	}
-
-	// Try with truncated text if still failing
-	if len(text) > 100 {
-		truncatedText := text[:97] + "..."
-		log.Printf("Trying truncated text for guild %s", guildID)
-		audioData, err = tp.ttsManager.ConvertToSpeech(truncatedText, "", fallbackConfig)
-		if err == nil {
-			return audioData, nil
-		}
-	}
-
-	return nil, fmt.Errorf("all TTS conversion attempts failed: %w", err)
 }
 
 // checkInactivity checks for inactivity and announces if needed (Requirement 4.4)
