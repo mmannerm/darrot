@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"darrot/internal/config"
+	"darrot/internal/tts"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -18,6 +19,7 @@ type Bot struct {
 	config        *config.Config
 	logger        *log.Logger
 	commandRouter *CommandRouter
+	ttsSystem     *tts.TTSSystem
 	isRunning     bool
 }
 
@@ -53,6 +55,19 @@ func New(cfg *config.Config) (*Bot, error) {
 		return nil, fmt.Errorf("failed to register test command handler: %w", err)
 	}
 
+	// Initialize TTS system
+	ttsSystem, err := tts.NewTTSSystem(session, cfg, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize TTS system: %w", err)
+	}
+
+	// Register TTS command handlers
+	if err := bot.registerTTSCommandHandlers(ttsSystem, commandRouter); err != nil {
+		return nil, fmt.Errorf("failed to register TTS command handlers: %w", err)
+	}
+
+	bot.ttsSystem = ttsSystem
+
 	// Set up event handlers
 	bot.setupEventHandlers()
 
@@ -80,6 +95,12 @@ func (b *Bot) Start() error {
 		// Continue running even if command registration fails
 	}
 
+	// Start TTS system
+	if err := b.ttsSystem.Start(); err != nil {
+		b.logger.Printf("Warning: Failed to start TTS system: %v", err)
+		// Continue running even if TTS system fails to start
+	}
+
 	b.isRunning = true
 	b.logger.Println("Bot started successfully")
 
@@ -93,6 +114,11 @@ func (b *Bot) Stop() error {
 	}
 
 	b.logger.Println("Stopping Discord bot...")
+
+	// Stop TTS system
+	if err := b.ttsSystem.Stop(); err != nil {
+		b.logger.Printf("Error stopping TTS system: %v", err)
+	}
 
 	// Close Discord connection
 	if err := b.session.Close(); err != nil {
@@ -195,6 +221,11 @@ func (b *Bot) IsRunning() bool {
 	return b.isRunning
 }
 
+// GetTTSSystem returns the TTS system for advanced usage
+func (b *Bot) GetTTSSystem() *tts.TTSSystem {
+	return b.ttsSystem
+}
+
 // WaitForShutdown blocks until a shutdown signal is received
 func (b *Bot) WaitForShutdown() {
 	// Create channel to receive OS signals
@@ -207,4 +238,55 @@ func (b *Bot) WaitForShutdown() {
 	<-stop
 
 	b.logger.Println("Shutdown signal received")
+}
+
+// registerTTSCommandHandlers registers TTS command handlers with the bot's command router
+func (b *Bot) registerTTSCommandHandlers(ttsSystem *tts.TTSSystem, commandRouter *CommandRouter) error {
+	integration := ttsSystem.GetCommandIntegration()
+	if integration == nil {
+		return fmt.Errorf("TTS command integration not available")
+	}
+
+	// Register each TTS command handler individually
+	handlers := []struct {
+		name    string
+		handler interface {
+			Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error
+			Definition() *discordgo.ApplicationCommand
+		}
+	}{
+		{"join", integration.GetJoinHandler()},
+		{"leave", integration.GetLeaveHandler()},
+		{"control", integration.GetControlHandler()},
+		{"opt-in", integration.GetOptInHandler()},
+		{"config", integration.GetConfigHandler()},
+	}
+
+	for _, h := range handlers {
+		// Create a wrapper that implements the bot's CommandHandler interface
+		wrapper := &ttsCommandWrapper{handler: h.handler}
+		if err := commandRouter.RegisterHandler(wrapper); err != nil {
+			return fmt.Errorf("failed to register TTS %s command handler: %w", h.name, err)
+		}
+		b.logger.Printf("Registered TTS %s command handler", h.name)
+	}
+
+	b.logger.Println("Successfully registered all TTS command handlers")
+	return nil
+}
+
+// ttsCommandWrapper wraps TTS command handlers to implement the bot's CommandHandler interface
+type ttsCommandWrapper struct {
+	handler interface {
+		Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error
+		Definition() *discordgo.ApplicationCommand
+	}
+}
+
+func (w *ttsCommandWrapper) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	return w.handler.Handle(s, i)
+}
+
+func (w *ttsCommandWrapper) Definition() *discordgo.ApplicationCommand {
+	return w.handler.Definition()
 }

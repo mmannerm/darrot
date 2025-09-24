@@ -236,6 +236,7 @@ func createTestJoinHandler() (*JoinCommandHandler, *MockVoiceManager, *MockChann
 		mockChannelService,
 		mockPermissionService,
 		mockUserService,
+		nil, // errorRecovery - not needed for basic tests
 		logger,
 	)
 
@@ -252,6 +253,7 @@ func createTestLeaveHandler() (*LeaveCommandHandler, *MockVoiceManager, *MockCha
 		mockVoiceManager,
 		mockChannelService,
 		mockPermissionService,
+		nil, // errorRecovery - not needed for basic tests
 		logger,
 	)
 

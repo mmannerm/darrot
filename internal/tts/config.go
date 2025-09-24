@@ -1,8 +1,10 @@
 package tts
 
 import (
+	"darrot/internal/config"
 	"errors"
 	"fmt"
+	"sync"
 )
 
 // DefaultTTSConfig returns the default TTS configuration
@@ -116,4 +118,167 @@ func ValidateChannelPairing(pairing ChannelPairingStorage) error {
 	}
 
 	return nil
+}
+
+// configService implements the ConfigService interface
+type configService struct {
+	storage      *StorageService
+	defaultTTS   config.TTSConfig
+	guildConfigs map[string]*GuildTTSConfig
+	mu           sync.RWMutex
+}
+
+// NewConfigService creates a new config service
+func NewConfigService(storage *StorageService, defaultTTS config.TTSConfig) ConfigService {
+	return &configService{
+		storage:      storage,
+		defaultTTS:   defaultTTS,
+		guildConfigs: make(map[string]*GuildTTSConfig),
+	}
+}
+
+// GetGuildConfig retrieves the TTS configuration for a guild
+func (cs *configService) GetGuildConfig(guildID string) (*GuildTTSConfig, error) {
+	cs.mu.RLock()
+	defer cs.mu.RUnlock()
+
+	// Check cache first
+	if config, exists := cs.guildConfigs[guildID]; exists {
+		return config, nil
+	}
+
+	// Try to load from storage
+	config, err := cs.storage.LoadGuildConfig(guildID)
+	if err != nil {
+		// If not found, return default config
+		defaultConfig := cs.createDefaultGuildConfig(guildID)
+		cs.guildConfigs[guildID] = &defaultConfig
+		return &defaultConfig, nil
+	}
+
+	// Cache the loaded config
+	cs.guildConfigs[guildID] = config
+	return config, nil
+}
+
+// SetGuildConfig sets the TTS configuration for a guild
+func (cs *configService) SetGuildConfig(guildID string, config *GuildTTSConfig) error {
+	if err := cs.ValidateConfig(config); err != nil {
+		return err
+	}
+
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	// Save to storage
+	if err := cs.storage.SaveGuildConfig(*config); err != nil {
+		return err
+	}
+
+	// Update cache
+	cs.guildConfigs[guildID] = config
+	return nil
+}
+
+// SetRequiredRoles sets the required roles for bot invitations
+func (cs *configService) SetRequiredRoles(guildID string, roleIDs []string) error {
+	config, err := cs.GetGuildConfig(guildID)
+	if err != nil {
+		return err
+	}
+
+	config.RequiredRoles = roleIDs
+	return cs.SetGuildConfig(guildID, config)
+}
+
+// GetRequiredRoles gets the required roles for bot invitations
+func (cs *configService) GetRequiredRoles(guildID string) ([]string, error) {
+	config, err := cs.GetGuildConfig(guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	return config.RequiredRoles, nil
+}
+
+// SetTTSSettings sets the TTS voice settings for a guild
+func (cs *configService) SetTTSSettings(guildID string, settings TTSConfig) error {
+	if err := ValidateConfig(settings); err != nil {
+		return err
+	}
+
+	config, err := cs.GetGuildConfig(guildID)
+	if err != nil {
+		return err
+	}
+
+	config.TTSSettings = settings
+	return cs.SetGuildConfig(guildID, config)
+}
+
+// GetTTSSettings gets the TTS voice settings for a guild
+func (cs *configService) GetTTSSettings(guildID string) (*TTSConfig, error) {
+	config, err := cs.GetGuildConfig(guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config.TTSSettings, nil
+}
+
+// SetMaxQueueSize sets the maximum queue size for a guild
+func (cs *configService) SetMaxQueueSize(guildID string, size int) error {
+	if size < 1 || size > 100 {
+		return fmt.Errorf("queue size must be between 1 and 100")
+	}
+
+	config, err := cs.GetGuildConfig(guildID)
+	if err != nil {
+		return err
+	}
+
+	config.MaxQueueSize = size
+	return cs.SetGuildConfig(guildID, config)
+}
+
+// GetMaxQueueSize gets the maximum queue size for a guild
+func (cs *configService) GetMaxQueueSize(guildID string) (int, error) {
+	config, err := cs.GetGuildConfig(guildID)
+	if err != nil {
+		return 0, err
+	}
+
+	return config.MaxQueueSize, nil
+}
+
+// ValidateConfig validates a guild TTS configuration
+func (cs *configService) ValidateConfig(config *GuildTTSConfig) error {
+	if config.GuildID == "" {
+		return fmt.Errorf("guild ID cannot be empty")
+	}
+
+	if err := ValidateConfig(config.TTSSettings); err != nil {
+		return fmt.Errorf("invalid TTS settings: %w", err)
+	}
+
+	if config.MaxQueueSize < 1 || config.MaxQueueSize > 100 {
+		return fmt.Errorf("max queue size must be between 1 and 100")
+	}
+
+	return nil
+}
+
+// createDefaultGuildConfig creates a default configuration for a guild
+func (cs *configService) createDefaultGuildConfig(guildID string) GuildTTSConfig {
+	return GuildTTSConfig{
+		GuildID:       guildID,
+		RequiredRoles: []string{}, // Empty means any user can invite
+		TTSSettings: TTSConfig{
+			Voice:  cs.defaultTTS.DefaultVoice,
+			Speed:  cs.defaultTTS.DefaultSpeed,
+			Volume: cs.defaultTTS.DefaultVolume,
+			Format: AudioFormatOpus,
+		},
+		MaxQueueSize: cs.defaultTTS.MaxQueueSize,
+	}
 }
