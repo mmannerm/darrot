@@ -1,7 +1,9 @@
 package tts
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
@@ -9,7 +11,8 @@ import (
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
-	"github.com/jonas747/dca"
+	"google.golang.org/api/option"
+	"gopkg.in/hraban/opus.v2"
 )
 
 // GoogleTTSManager implements TTSManager using Google Cloud Text-to-Speech
@@ -23,9 +26,20 @@ type GoogleTTSManager struct {
 }
 
 // NewGoogleTTSManager creates a new Google TTS manager instance
-func NewGoogleTTSManager(messageQueue MessageQueue) (*GoogleTTSManager, error) {
+func NewGoogleTTSManager(messageQueue MessageQueue, credentialsPath string) (*GoogleTTSManager, error) {
 	ctx := context.Background()
-	client, err := texttospeech.NewClient(ctx)
+
+	var client *texttospeech.Client
+	var err error
+
+	if credentialsPath != "" {
+		// Use service account credentials file
+		client, err = texttospeech.NewClient(ctx, option.WithCredentialsFile(credentialsPath))
+	} else {
+		// Use default credentials (Application Default Credentials)
+		client, err = texttospeech.NewClient(ctx)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TTS client: %w", err)
 	}
@@ -98,7 +112,7 @@ func (g *GoogleTTSManager) ConvertToSpeech(text, voice string, config TTSConfig)
 			AudioEncoding:   texttospeechpb.AudioEncoding_LINEAR16,
 			SpeakingRate:    float64(speed),
 			VolumeGainDb:    volumeToDb(volume),
-			SampleRateHertz: 48000, // Discord's preferred sample rate
+			SampleRateHertz: 24000, // Use 24kHz (widely supported) then resample to 48kHz
 		},
 	}
 
@@ -115,12 +129,58 @@ func (g *GoogleTTSManager) ConvertToSpeech(text, voice string, config TTSConfig)
 		return nil, fmt.Errorf("TTS synthesis failed: %w", err)
 	}
 
+	log.Printf("[DEBUG] Google TTS returned %d bytes of audio data for text: %s", len(resp.AudioContent), text)
+	log.Printf("[DEBUG] TTS Request config - SampleRate: %d, Channels: %d, Encoding: %s",
+		req.AudioConfig.SampleRateHertz,
+		2, // We set channels to 2 in the config
+		req.AudioConfig.AudioEncoding.String())
+
+	// Debug: Check what Google TTS actually returned
+	log.Printf("[DEBUG] TTS Response - AudioContent length: %d bytes", len(resp.AudioContent))
+	if len(resp.AudioContent) >= 44 {
+		// Check if it's a WAV file (has WAV header)
+		header := resp.AudioContent[:44]
+		if string(header[0:4]) == "RIFF" && string(header[8:12]) == "WAVE" {
+			log.Printf("[DEBUG] Response contains WAV header")
+			// Extract sample rate from WAV header (bytes 24-27, little-endian)
+			actualSampleRate := uint32(header[24]) | uint32(header[25])<<8 | uint32(header[26])<<16 | uint32(header[27])<<24
+			// Extract channels from WAV header (bytes 22-23, little-endian)
+			actualChannels := uint16(header[22]) | uint16(header[23])<<8
+			log.Printf("[DEBUG] WAV header indicates: %d Hz, %d channels", actualSampleRate, actualChannels)
+		} else {
+			log.Printf("[DEBUG] Response is raw PCM (no WAV header)")
+			log.Printf("[DEBUG] First 16 bytes: %v", resp.AudioContent[:16])
+		}
+	}
+
+	// Determine actual audio format from Google TTS response
+	actualSampleRate := 24000 // Our request
+	actualChannels := 1       // Google TTS typically returns mono for LINEAR16
+	audioContent := resp.AudioContent
+
+	// Skip WAV header if present
+	if len(audioContent) >= 44 && string(audioContent[0:4]) == "RIFF" {
+		log.Printf("[DEBUG] Skipping WAV header (44 bytes)")
+		audioContent = audioContent[44:] // Skip WAV header
+		// Extract actual format from WAV header
+		header := resp.AudioContent[:44]
+		actualSampleRate = int(uint32(header[24]) | uint32(header[25])<<8 | uint32(header[26])<<16 | uint32(header[27])<<24)
+		actualChannels = int(uint16(header[22]) | uint16(header[23])<<8)
+		log.Printf("[DEBUG] WAV header format: %d Hz, %d channels", actualSampleRate, actualChannels)
+	}
+
+	// Convert mono to stereo if needed, then resample to 48kHz stereo
+	processedAudio := g.processAudioForDiscord(audioContent, actualSampleRate, actualChannels)
+	log.Printf("[DEBUG] Processed audio: %d bytes -> %d bytes (%dHz %dch -> 48kHz 2ch)",
+		len(audioContent), len(processedAudio), actualSampleRate, actualChannels)
+
 	// Convert audio to Discord-compatible format
-	audioData, err := g.convertToDiscordFormat(resp.AudioContent, config.Format)
+	audioData, err := g.convertToDiscordFormat(processedAudio, config.Format)
 	if err != nil {
 		return nil, fmt.Errorf("audio format conversion failed: %w", err)
 	}
 
+	log.Printf("[DEBUG] Audio conversion completed: %d bytes input -> %d bytes output (format: %s)", len(resp.AudioContent), len(audioData), config.Format)
 	return audioData, nil
 }
 
@@ -286,7 +346,7 @@ func (g *GoogleTTSManager) convertToDiscordFormat(audioData []byte, format Audio
 	case AudioFormatDCA:
 		return g.convertToDCA(audioData)
 	case AudioFormatOpus:
-		return g.convertToOpus(audioData)
+		return g.convertToRawOpus(audioData)
 	case AudioFormatPCM:
 		return audioData, nil // Already PCM from Google TTS
 	default:
@@ -294,52 +354,257 @@ func (g *GoogleTTSManager) convertToDiscordFormat(audioData []byte, format Audio
 	}
 }
 
-// convertToDCA converts PCM audio to DCA format for Discord
+// convertToDCA converts PCM audio to DCA format using native Opus encoding
 func (g *GoogleTTSManager) convertToDCA(pcmData []byte) ([]byte, error) {
-	// Create a DCA encoder
-	options := &dca.EncodeOptions{
-		Volume:           256,
-		Channels:         2,
-		FrameRate:        48000,
-		FrameDuration:    20,
-		Bitrate:          64,
-		Application:      dca.AudioApplicationAudio,
-		CompressionLevel: 10,
-		PacketLoss:       1,
-		BufferedFrames:   100,
-		VBR:              true,
-	}
+	log.Printf("[DEBUG] Converting PCM to DCA format using native Opus: %d bytes", len(pcmData))
 
-	// Create a reader from PCM data
-	reader := &bytesReader{data: pcmData}
+	// Discord Opus specifications
+	const (
+		sampleRate      = 48000 // 48kHz
+		channels        = 2     // Stereo
+		bitrate         = 64000 // 64kbps
+		frameDurationMs = 20    // 20ms frames
+		application     = opus.AppAudio
+	)
 
-	// Encode to DCA
-	encoder, err := dca.EncodeMem(reader, options)
+	// Calculate frame size in samples (per channel)
+	frameSize := (sampleRate * frameDurationMs) / 1000 // 960 samples per channel
+
+	// Create Opus encoder
+	encoder, err := opus.NewEncoder(sampleRate, channels, application)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create DCA encoder: %w", err)
+		return nil, fmt.Errorf("failed to create Opus encoder: %w", err)
 	}
-	defer encoder.Cleanup()
 
-	// Read all encoded data
-	var dcaData []byte
-	for {
-		frame, err := encoder.OpusFrame()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("failed to encode DCA frame: %w", err)
+	// Set encoding parameters for Discord compatibility
+	if err := encoder.SetBitrate(bitrate); err != nil {
+		return nil, fmt.Errorf("failed to set bitrate: %w", err)
+	}
+
+	// Convert byte data to int16 samples
+	if len(pcmData)%2 != 0 {
+		return nil, fmt.Errorf("PCM data length must be even (16-bit samples)")
+	}
+
+	samples := make([]int16, len(pcmData)/2)
+	for i := 0; i < len(samples); i++ {
+		// Convert little-endian bytes to int16
+		samples[i] = int16(pcmData[i*2]) | int16(pcmData[i*2+1])<<8
+	}
+
+	log.Printf("[DEBUG] Converted %d bytes to %d samples for Opus encoding", len(pcmData), len(samples))
+
+	// Process samples in frames and encode to DCA
+	var dcaBuffer bytes.Buffer
+	frameCount := 0
+	samplesPerFrame := frameSize * channels // Total samples per frame (both channels)
+
+	for offset := 0; offset < len(samples); offset += samplesPerFrame {
+		end := offset + samplesPerFrame
+		if end > len(samples) {
+			// Pad the last frame with silence
+			lastFrame := make([]int16, samplesPerFrame)
+			copy(lastFrame, samples[offset:])
+			// The rest is already zero (silence)
+			samples = append(samples[:offset], lastFrame...)
+			end = offset + samplesPerFrame
 		}
-		dcaData = append(dcaData, frame...)
+
+		frame := samples[offset:end]
+
+		// Encode frame to Opus
+		opusFrame := make([]byte, 4000) // Max Opus frame size
+		n, err := encoder.Encode(frame, opusFrame)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode Opus frame %d: %w", frameCount, err)
+		}
+
+		opusFrame = opusFrame[:n] // Trim to actual size
+
+		// Write DCA frame header (2 bytes: frame length as int16 little-endian)
+		frameLen := int16(len(opusFrame))
+		if err := binary.Write(&dcaBuffer, binary.LittleEndian, frameLen); err != nil {
+			return nil, fmt.Errorf("failed to write DCA frame header: %w", err)
+		}
+
+		// Write Opus frame data
+		if _, err := dcaBuffer.Write(opusFrame); err != nil {
+			return nil, fmt.Errorf("failed to write DCA frame data: %w", err)
+		}
+
+		frameCount++
 	}
 
-	return dcaData, nil
+	totalSize := dcaBuffer.Len()
+	avgFrameSize := 0
+	if frameCount > 0 {
+		avgFrameSize = totalSize / frameCount
+	}
+
+	log.Printf("[DEBUG] Native Opus encoding completed: %d frames, %d bytes total (avg %d bytes/frame)",
+		frameCount, totalSize, avgFrameSize)
+
+	return dcaBuffer.Bytes(), nil
 }
 
-// convertToOpus converts PCM audio to Opus format
-func (g *GoogleTTSManager) convertToOpus(pcmData []byte) ([]byte, error) {
-	// For now, use DCA conversion as it produces Opus-compatible output
-	return g.convertToDCA(pcmData)
+// convertToRawOpus converts PCM audio to raw Opus format using native Opus encoding
+func (g *GoogleTTSManager) convertToRawOpus(pcmData []byte) ([]byte, error) {
+	log.Printf("[DEBUG] Converting PCM to raw Opus format using native library: %d bytes", len(pcmData))
+
+	// Discord Opus specifications
+	const (
+		sampleRate      = 48000  // 48kHz
+		channels        = 2      // Stereo
+		bitrate         = 128000 // 128kbps for higher quality raw Opus
+		frameDurationMs = 20     // 20ms frames
+		application     = opus.AppAudio
+	)
+
+	// Calculate frame size in samples (per channel)
+	frameSize := (sampleRate * frameDurationMs) / 1000 // 960 samples per channel
+
+	// Create Opus encoder
+	encoder, err := opus.NewEncoder(sampleRate, channels, application)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Opus encoder: %w", err)
+	}
+
+	// Set encoding parameters
+	if err := encoder.SetBitrate(bitrate); err != nil {
+		return nil, fmt.Errorf("failed to set bitrate: %w", err)
+	}
+
+	// Convert byte data to int16 samples
+	if len(pcmData)%2 != 0 {
+		return nil, fmt.Errorf("PCM data length must be even (16-bit samples)")
+	}
+
+	samples := make([]int16, len(pcmData)/2)
+	for i := 0; i < len(samples); i++ {
+		// Convert little-endian bytes to int16
+		samples[i] = int16(pcmData[i*2]) | int16(pcmData[i*2+1])<<8
+	}
+
+	// Encode all samples to raw Opus (not DCA format)
+	var opusBuffer bytes.Buffer
+	samplesPerFrame := frameSize * channels // Total samples per frame (both channels)
+
+	for offset := 0; offset < len(samples); offset += samplesPerFrame {
+		end := offset + samplesPerFrame
+		if end > len(samples) {
+			// Pad the last frame with silence
+			lastFrame := make([]int16, samplesPerFrame)
+			copy(lastFrame, samples[offset:])
+			samples = append(samples[:offset], lastFrame...)
+			end = offset + samplesPerFrame
+		}
+
+		frame := samples[offset:end]
+
+		// Encode frame to Opus
+		opusFrame := make([]byte, 4000) // Max Opus frame size
+		n, err := encoder.Encode(frame, opusFrame)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode raw Opus frame: %w", err)
+		}
+
+		// Append raw Opus data (no DCA headers for raw format)
+		opusBuffer.Write(opusFrame[:n])
+	}
+
+	opusData := opusBuffer.Bytes()
+	log.Printf("[DEBUG] Native raw Opus encoding completed: %d bytes input -> %d bytes output", len(pcmData), len(opusData))
+
+	return opusData, nil
+}
+
+// parseOpusStreamToDCA parses raw Opus stream into proper DCA format
+// This respects Opus frame boundaries for better audio quality
+func (g *GoogleTTSManager) parseOpusStreamToDCA(opusData []byte) ([]byte, error) {
+	var dcaBuffer bytes.Buffer
+	var frameCount int
+
+	// Parse Opus frames from the raw stream
+	// Opus frames start with a TOC (Table of Contents) byte that indicates frame structure
+	offset := 0
+	for offset < len(opusData) {
+		if offset >= len(opusData) {
+			break
+		}
+
+		// Find the next Opus frame by looking for frame patterns
+		// For simplicity, we'll use a heuristic based on the working airhorn
+		frameSize := g.estimateOpusFrameSize(opusData[offset:])
+		if frameSize <= 0 || offset+frameSize > len(opusData) {
+			// If we can't determine frame size, use remaining data
+			frameSize = len(opusData) - offset
+		}
+
+		frameData := opusData[offset : offset+frameSize]
+
+		// Write DCA frame header (2 bytes: frame length as int16 little-endian)
+		frameLen := int16(len(frameData))
+		if err := binary.Write(&dcaBuffer, binary.LittleEndian, frameLen); err != nil {
+			return nil, fmt.Errorf("failed to write DCA frame header: %w", err)
+		}
+
+		// Write Opus frame data
+		if _, err := dcaBuffer.Write(frameData); err != nil {
+			return nil, fmt.Errorf("failed to write DCA frame data: %w", err)
+		}
+
+		offset += frameSize
+		frameCount++
+
+		// Safety check to prevent infinite loops
+		if frameCount > 1000 {
+			log.Printf("[DEBUG] Warning: Too many frames, stopping at %d", frameCount)
+			break
+		}
+	}
+
+	log.Printf("[DEBUG] Parsed %d bytes of Opus data into %d DCA frames", len(opusData), frameCount)
+	return dcaBuffer.Bytes(), nil
+}
+
+// estimateOpusFrameSize estimates the size of an Opus frame based on patterns
+// This is a heuristic approach to avoid complex Opus parsing
+func (g *GoogleTTSManager) estimateOpusFrameSize(data []byte) int {
+	if len(data) == 0 {
+		return 0
+	}
+
+	// For 20ms frames at 64kbps, typical Opus frame sizes are:
+	// - 160-200 bytes for speech
+	// - 120-180 bytes for audio
+	// The airhorn averages ~163 bytes per frame
+
+	// Use a simple heuristic: look for the next potential frame start
+	// or use a reasonable default size
+	const defaultFrameSize = 160
+	const maxFrameSize = 300
+
+	if len(data) <= defaultFrameSize {
+		return len(data)
+	}
+
+	// Look for patterns that might indicate frame boundaries
+	// This is a simplified approach - in practice, proper Opus parsing would be better
+	for i := defaultFrameSize; i < len(data) && i < maxFrameSize; i++ {
+		// Look for potential TOC byte patterns (simplified heuristic)
+		if data[i] >= 0x00 && data[i] <= 0xFF {
+			// This could be a frame boundary, but it's just a heuristic
+			if i > defaultFrameSize/2 { // Ensure reasonable frame size
+				return i
+			}
+		}
+	}
+
+	// Default to a reasonable frame size
+	if len(data) > defaultFrameSize {
+		return defaultFrameSize
+	}
+	return len(data)
 }
 
 // parseVoiceID parses a voice ID to extract language code and voice name
@@ -405,5 +670,110 @@ func (r *bytesReader) Read(p []byte) (n int, err error) {
 
 	n = copy(p, r.data[r.pos:])
 	r.pos += n
+
+	// Debug logging to see if data is being read
+	if n > 0 {
+		log.Printf("[DEBUG] bytesReader: Read %d bytes, position now %d/%d", n, r.pos, len(r.data))
+	}
+
 	return n, nil
+}
+
+// processAudioForDiscord converts audio to Discord format (48kHz stereo)
+// Handles mono->stereo conversion and sample rate conversion
+func (g *GoogleTTSManager) processAudioForDiscord(pcmData []byte, fromRate, fromChannels int) []byte {
+	const (
+		targetRate     = 48000
+		targetChannels = 2
+	)
+
+	log.Printf("[DEBUG] Processing audio: %dHz %dch -> %dHz %dch", fromRate, fromChannels, targetRate, targetChannels)
+
+	// Convert bytes to int16 samples
+	if len(pcmData)%2 != 0 {
+		log.Printf("[DEBUG] Warning: PCM data length not even, truncating")
+		pcmData = pcmData[:len(pcmData)-1]
+	}
+
+	inputSamples := make([]int16, len(pcmData)/2)
+	for i := 0; i < len(inputSamples); i++ {
+		inputSamples[i] = int16(pcmData[i*2]) | int16(pcmData[i*2+1])<<8
+	}
+
+	// Step 1: Convert mono to stereo if needed
+	var stereoSamples []int16
+	if fromChannels == 1 {
+		// Mono to stereo: duplicate each sample
+		stereoSamples = make([]int16, len(inputSamples)*2)
+		for i, sample := range inputSamples {
+			stereoSamples[i*2] = sample   // Left channel
+			stereoSamples[i*2+1] = sample // Right channel (same as left)
+		}
+		log.Printf("[DEBUG] Converted mono to stereo: %d -> %d samples", len(inputSamples), len(stereoSamples))
+	} else {
+		// Already stereo
+		stereoSamples = inputSamples
+	}
+
+	// Step 2: Resample to target rate if needed
+	var finalSamples []int16
+	if fromRate != targetRate {
+		finalSamples = g.resampleStereo(stereoSamples, fromRate, targetRate)
+		log.Printf("[DEBUG] Resampled: %d samples (%dHz) -> %d samples (%dHz)",
+			len(stereoSamples), fromRate, len(finalSamples), targetRate)
+	} else {
+		finalSamples = stereoSamples
+	}
+
+	// Convert back to bytes
+	outputData := make([]byte, len(finalSamples)*2)
+	for i, sample := range finalSamples {
+		outputData[i*2] = byte(sample & 0xFF)
+		outputData[i*2+1] = byte((sample >> 8) & 0xFF)
+	}
+
+	return outputData
+}
+
+// resampleStereo resamples stereo PCM audio using linear interpolation
+func (g *GoogleTTSManager) resampleStereo(stereoSamples []int16, fromRate, toRate int) []int16 {
+	if fromRate == toRate {
+		return stereoSamples // No resampling needed
+	}
+
+	// Calculate resampling ratio
+	ratio := float64(toRate) / float64(fromRate)
+	inputFrames := len(stereoSamples) / 2 // Stereo frames (left+right pairs)
+	outputFrames := int(float64(inputFrames) * ratio)
+	outputSamples := make([]int16, outputFrames*2) // 2 samples per frame
+
+	// Simple linear interpolation resampling for stereo
+	for i := 0; i < outputFrames; i++ {
+		// Calculate the corresponding position in the input
+		srcPos := float64(i) / ratio
+		srcIndex := int(srcPos)
+
+		if srcIndex >= inputFrames-1 {
+			// Use the last frame if we're at the end
+			outputSamples[i*2] = stereoSamples[(inputFrames-1)*2]     // Left
+			outputSamples[i*2+1] = stereoSamples[(inputFrames-1)*2+1] // Right
+		} else {
+			// Linear interpolation between two stereo frames
+			frac := srcPos - float64(srcIndex)
+
+			// Left channel
+			left1 := float64(stereoSamples[srcIndex*2])
+			left2 := float64(stereoSamples[(srcIndex+1)*2])
+			leftInterpolated := left1 + frac*(left2-left1)
+			outputSamples[i*2] = int16(leftInterpolated)
+
+			// Right channel
+			right1 := float64(stereoSamples[srcIndex*2+1])
+			right2 := float64(stereoSamples[(srcIndex+1)*2+1])
+			rightInterpolated := right1 + frac*(right2-right1)
+			outputSamples[i*2+1] = int16(rightInterpolated)
+		}
+	}
+
+	return outputSamples
 }

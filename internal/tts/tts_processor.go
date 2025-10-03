@@ -180,7 +180,13 @@ func (tp *ttsProcessor) processGuildMessages(guildID string) {
 	}
 
 	// Check if voice connection exists
-	if !tp.voiceManager.IsConnected(guildID) {
+	isConnected := tp.voiceManager.IsConnected(guildID)
+	if !isConnected {
+		// Debug: Log why we're not processing
+		queueSize := tp.messageQueue.Size(guildID)
+		if queueSize > 0 {
+			log.Printf("Guild %s has %d queued messages but no voice connection", guildID, queueSize)
+		}
 		return
 	}
 
@@ -204,6 +210,8 @@ func (tp *ttsProcessor) processGuildMessages(guildID string) {
 		tp.checkInactivity(guildID, processor)
 		return
 	}
+
+	log.Printf("Processing %d queued messages for guild %s", queueSize, guildID)
 
 	// Process next message
 	tp.processNextMessage(guildID, processor)
@@ -242,8 +250,8 @@ func (tp *ttsProcessor) processNextMessage(guildID string, processor *guildProce
 		return
 	}
 
-	// Prepare message text with author name (Requirement 2.3)
-	messageText := fmt.Sprintf("%s says: %s", message.Username, message.Content)
+	// Message already has author name from message monitor (Requirement 2.3)
+	messageText := message.Content
 
 	// Truncate message if too long (Requirement 4.2)
 	if len(messageText) > MaxMessageLength {
