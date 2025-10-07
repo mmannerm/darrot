@@ -71,6 +71,8 @@ type TTSCommandIntegration struct {
 func NewTTSCommandIntegration(
 	session *discordgo.Session,
 	storage *StorageService,
+	voiceManager VoiceManager,
+	ttsProcessor TTSProcessor,
 	logger *log.Logger,
 ) (*TTSCommandIntegration, error) {
 	// Create TTS services
@@ -78,14 +80,15 @@ func NewTTSCommandIntegration(
 	permissionService := NewPermissionService(sessionWrapper, storage, logger)
 	channelService := NewChannelService(storage, sessionWrapper, permissionService)
 	userService := NewUserService(storage)
-	voiceManager := NewVoiceManager(session)
+
+	logger.Printf("Using shared voice manager instance: %p", voiceManager)
 
 	// Create message queue and config service (needed for error recovery)
 	messageQueue := NewMessageQueue()
 	configService := &mockConfigServiceForIntegration{}
 
-	// Create TTS manager (needed for error recovery)
-	ttsManager, err := NewGoogleTTSManager(messageQueue)
+	// Create TTS manager (needed for error recovery) - using Google Cloud TTS
+	ttsManager, err := NewGoogleTTSManager(messageQueue, "")
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +102,7 @@ func NewTTSCommandIntegration(
 		channelService,
 		permissionService,
 		userService,
+		ttsProcessor,
 		errorRecovery,
 		logger,
 	)
@@ -107,6 +111,7 @@ func NewTTSCommandIntegration(
 		voiceManager,
 		channelService,
 		permissionService,
+		ttsProcessor,
 		errorRecovery,
 		logger,
 	)
