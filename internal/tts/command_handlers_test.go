@@ -283,7 +283,7 @@ func TestJoinCommandHandler_Definition(t *testing.T) {
 
 	definition := handler.Definition()
 
-	assert.Equal(t, "tts-join", definition.Name)
+	assert.Equal(t, "darrot-join", definition.Name)
 	assert.Equal(t, "Join a voice channel and start TTS for messages from a text channel", definition.Description)
 	assert.Len(t, definition.Options, 2)
 
@@ -382,7 +382,7 @@ func TestLeaveCommandHandler_Definition(t *testing.T) {
 
 	definition := handler.Definition()
 
-	assert.Equal(t, "tts-leave", definition.Name)
+	assert.Equal(t, "darrot-leave", definition.Name)
 	assert.Equal(t, "Stop TTS and leave the voice channel", definition.Description)
 	assert.Len(t, definition.Options, 0) // Leave command has no options
 }
@@ -552,7 +552,7 @@ func TestControlCommandHandler_Definition(t *testing.T) {
 
 	definition := handler.Definition()
 
-	assert.Equal(t, "tts-control", definition.Name)
+	assert.Equal(t, "darrot-control", definition.Name)
 	assert.Equal(t, "Control TTS playback (pause, resume, skip)", definition.Description)
 	assert.Len(t, definition.Options, 1)
 
@@ -995,7 +995,7 @@ func TestOptInCommandHandler_Definition(t *testing.T) {
 
 	definition := handler.Definition()
 
-	assert.Equal(t, "tts-optin", definition.Name)
+	assert.Equal(t, "darrot-optin", definition.Name)
 	assert.Equal(t, "Manage your TTS opt-in preferences", definition.Description)
 	assert.Len(t, definition.Options, 1)
 

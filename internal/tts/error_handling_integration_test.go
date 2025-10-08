@@ -219,13 +219,13 @@ func TestCommandHandlerErrorIntegration(t *testing.T) {
 
 	// Test command definitions
 	joinDef := joinHandler.Definition()
-	if joinDef.Name != "tts-join" {
-		t.Errorf("Expected join command name 'tts-join', got '%s'", joinDef.Name)
+	if joinDef.Name != "darrot-join" {
+		t.Errorf("Expected join command name 'darrot-join', got '%s'", joinDef.Name)
 	}
 
 	leaveDef := leaveHandler.Definition()
-	if leaveDef.Name != "tts-leave" {
-		t.Errorf("Expected leave command name 'tts-leave', got '%s'", leaveDef.Name)
+	if leaveDef.Name != "darrot-leave" {
+		t.Errorf("Expected leave command name 'darrot-leave', got '%s'", leaveDef.Name)
 	}
 }
 

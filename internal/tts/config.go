@@ -13,7 +13,7 @@ func DefaultTTSConfig() TTSConfig {
 		Voice:  "en-US-Standard-A",
 		Speed:  1.0,
 		Volume: 1.0,
-		Format: AudioFormatOpus,
+		Format: AudioFormatDCA,
 	}
 }
 

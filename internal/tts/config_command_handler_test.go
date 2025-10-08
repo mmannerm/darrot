@@ -111,7 +111,7 @@ func TestConfigCommandHandler_Definition(t *testing.T) {
 
 	definition := handler.Definition()
 
-	assert.Equal(t, "tts-config", definition.Name)
+	assert.Equal(t, "darrot-config", definition.Name)
 	assert.Equal(t, "Configure TTS settings for this server (Administrator only)", definition.Description)
 	assert.Len(t, definition.Options, 4) // roles, voice, queue, show subcommands
 

@@ -151,8 +151,8 @@ func TestTTSManagerLifecycle(t *testing.T) {
 	assert.NoError(t, err) // Should not error even with nil client
 }
 
-// TestTTSErrorScenarios tests various error scenarios
-func TestTTSErrorScenarios(t *testing.T) {
+// TestTTSIntegrationErrorScenarios tests various error scenarios in integration context
+func TestTTSIntegrationErrorScenarios(t *testing.T) {
 	messageQueue := NewMessageQueue()
 	manager := &GoogleTTSManager{
 		client:        nil,
