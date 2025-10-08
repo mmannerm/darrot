@@ -24,7 +24,7 @@ func TestNewGoogleTTSManager(t *testing.T) {
 
 			// Note: This test will fail in CI without Google Cloud credentials
 			// In a real environment, you'd mock the Google TTS client
-			manager, err := NewGoogleTTSManager(mockQueue)
+			manager, err := NewGoogleTTSManager(mockQueue, "")
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -522,7 +522,7 @@ func TestGoogleTTSManager_ConvertToSpeech_Integration(t *testing.T) {
 	}
 
 	mockQueue := &MockMessageQueue{}
-	manager, err := NewGoogleTTSManager(mockQueue)
+	manager, err := NewGoogleTTSManager(mockQueue, "")
 	if err != nil {
 		t.Skip("Skipping integration test - no Google Cloud credentials available")
 	}

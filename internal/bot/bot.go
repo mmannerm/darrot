@@ -35,6 +35,10 @@ func New(cfg *config.Config) (*Bot, error) {
 		return nil, fmt.Errorf("failed to create Discord session: %w", err)
 	}
 
+	// Set required intents for message monitoring
+	// Note: IntentsMessageContent is a privileged intent that must be enabled in Discord Developer Portal
+	session.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates | discordgo.IntentsGuilds | discordgo.IntentsMessageContent
+
 	// Create logger
 	logger := log.New(os.Stdout, "[BOT] ", log.LstdFlags|log.Lshortfile)
 
@@ -167,6 +171,7 @@ func (b *Bot) setupEventHandlers() {
 	// Handle ready event
 	b.session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		b.logger.Printf("Bot is ready! Logged in as: %s#%s", r.User.Username, r.User.Discriminator)
+		b.logger.Printf("Bot has access to %d guilds", len(r.Guilds))
 	})
 
 	// Handle interaction events (slash commands)
@@ -182,6 +187,13 @@ func (b *Bot) setupEventHandlers() {
 	// Handle resume events (connection restored)
 	b.session.AddHandler(func(s *discordgo.Session, r *discordgo.Resumed) {
 		b.logger.Println("Discord connection restored")
+	})
+
+	// Add debug handler for message events to verify they're being received
+	b.session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if !m.Author.Bot {
+			b.logger.Printf("[DEBUG] Received message from %s in guild %s: %s", m.Author.Username, m.GuildID, m.Content)
+		}
 	})
 }
 
@@ -247,13 +259,10 @@ func (b *Bot) registerTTSCommandHandlers(ttsSystem *tts.TTSSystem, commandRouter
 		return fmt.Errorf("TTS command integration not available")
 	}
 
-	// Register each TTS command handler individually
+	// Register each TTS command handler individually using simple wrappers
 	handlers := []struct {
 		name    string
-		handler interface {
-			Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error
-			Definition() *discordgo.ApplicationCommand
-		}
+		handler TTSCommandHandler
 	}{
 		{"join", integration.GetJoinHandler()},
 		{"leave", integration.GetLeaveHandler()},
@@ -275,12 +284,17 @@ func (b *Bot) registerTTSCommandHandlers(ttsSystem *tts.TTSSystem, commandRouter
 	return nil
 }
 
+// TTSCommandHandler interface that matches what TTS handlers implement
+type TTSCommandHandler interface {
+	Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error
+	Definition() *discordgo.ApplicationCommand
+	ValidatePermissions(userID, guildID string) error
+	ValidateChannelAccess(userID, channelID string) error
+}
+
 // ttsCommandWrapper wraps TTS command handlers to implement the bot's CommandHandler interface
 type ttsCommandWrapper struct {
-	handler interface {
-		Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error
-		Definition() *discordgo.ApplicationCommand
-	}
+	handler TTSCommandHandler
 }
 
 func (w *ttsCommandWrapper) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error {
