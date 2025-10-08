@@ -58,12 +58,17 @@ func (m *MessageMonitor) handleMessageCreate(s *discordgo.Session, mc *discordgo
 		return
 	}
 
+	m.logger.Printf("Received message from %s in guild %s, channel %s: %s", mc.Author.Username, mc.GuildID, mc.ChannelID, mc.Content)
+
 	// Check if this channel is paired with a voice channel
 	// Note: Using the existing interface which returns bool only
 	isPaired := m.channelService.IsChannelPaired(mc.GuildID, mc.ChannelID)
 	if !isPaired {
+		m.logger.Printf("Channel %s in guild %s is not paired, ignoring message", mc.ChannelID, mc.GuildID)
 		return // Channel is not paired, ignore message
 	}
+
+	m.logger.Printf("Channel %s in guild %s is paired, processing message", mc.ChannelID, mc.GuildID)
 
 	// Check if user is opted-in for TTS
 	isOptedIn, err := m.userService.IsOptedIn(mc.Author.ID, mc.GuildID)
@@ -73,8 +78,11 @@ func (m *MessageMonitor) handleMessageCreate(s *discordgo.Session, mc *discordgo
 	}
 
 	if !isOptedIn {
+		m.logger.Printf("User %s in guild %s is not opted-in, ignoring message", mc.Author.Username, mc.GuildID)
 		return // User is not opted-in, ignore message
 	}
+
+	m.logger.Printf("User %s in guild %s is opted-in, processing message", mc.Author.Username, mc.GuildID)
 
 	// Preprocess the message
 	processedContent := m.preprocessMessage(mc.Content, mc.Author.Username)

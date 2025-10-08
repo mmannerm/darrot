@@ -21,6 +21,7 @@ type JoinCommandHandler struct {
 	channelService    ChannelService
 	permissionService PermissionService
 	userService       UserService
+	ttsProcessor      TTSProcessor
 	errorRecovery     *ErrorRecoveryManager
 	logger            *log.Logger
 }
@@ -31,6 +32,7 @@ func NewJoinCommandHandler(
 	channelService ChannelService,
 	permissionService PermissionService,
 	userService UserService,
+	ttsProcessor TTSProcessor,
 	errorRecovery *ErrorRecoveryManager,
 	logger *log.Logger,
 ) *JoinCommandHandler {
@@ -39,6 +41,7 @@ func NewJoinCommandHandler(
 		channelService:    channelService,
 		permissionService: permissionService,
 		userService:       userService,
+		ttsProcessor:      ttsProcessor,
 		errorRecovery:     errorRecovery,
 		logger:            logger,
 	}
@@ -47,7 +50,7 @@ func NewJoinCommandHandler(
 // Definition returns the Discord slash command definition for the join command
 func (h *JoinCommandHandler) Definition() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Name:        "tts-join",
+		Name:        "darrot-join",
 		Description: "Join a voice channel and start TTS for messages from a text channel",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
@@ -95,9 +98,8 @@ func (h *JoinCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interacti
 	if len(options) > 1 && options[1].ChannelValue(s) != nil {
 		textChannelID = options[1].ChannelValue(s).ID
 	} else {
-		// Default to embedded voice chat (use voice channel ID as text channel for now)
-		// In a real implementation, we would get the associated text channel
-		textChannelID = voiceChannelID
+		// Default to the channel where the command was invoked
+		textChannelID = i.ChannelID
 	}
 
 	// Validate channel access
@@ -116,6 +118,52 @@ func (h *JoinCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interacti
 			if err := h.voiceManager.LeaveChannel(guildID); err != nil {
 				h.logger.Printf("Warning: Failed to leave current channel: %v", err)
 			}
+			// Stop TTS processing for the old connection
+			if err := h.ttsProcessor.StopGuildProcessing(guildID); err != nil {
+				h.logger.Printf("Warning: Failed to stop TTS processing for guild %s: %v", guildID, err)
+			}
+		} else {
+			// Already connected to the same voice channel
+			// Check if we need to update the text channel pairing
+			existingPairing, err := h.channelService.GetPairing(guildID, voiceChannelID)
+			if err == nil && existingPairing.TextChannelID == textChannelID {
+				// Same pairing already exists and bot is connected
+				// Just ensure TTS processing is started
+				if err := h.ttsProcessor.StartGuildProcessing(guildID); err != nil {
+					h.logger.Printf("Warning: Failed to start TTS processing for guild %s: %v", guildID, err)
+				}
+
+				voiceChannel, _ := s.Channel(voiceChannelID)
+				textChannel, _ := s.Channel(textChannelID)
+
+				voiceChannelName := voiceChannel.Name
+				if voiceChannelName == "" {
+					voiceChannelName = voiceChannelID
+				}
+
+				textChannelName := textChannel.Name
+				if textChannelName == "" {
+					textChannelName = textChannelID
+				}
+
+				responseMessage := fmt.Sprintf("✅ Already connected to voice channel **%s** and monitoring text channel **%s** for TTS messages.", voiceChannelName, textChannelName)
+				return h.respondSuccess(s, i, responseMessage)
+			}
+		}
+	}
+
+	// Check for stale pairings (pairing exists but bot isn't connected)
+	if _, err := h.channelService.GetPairing(guildID, voiceChannelID); err == nil {
+		// Pairing exists but bot isn't connected - clean it up
+		if !h.voiceManager.IsConnected(guildID) {
+			h.logger.Printf("Found stale pairing for guild %s, voice channel %s - cleaning up", guildID, voiceChannelID)
+			if err := h.channelService.RemovePairing(guildID, voiceChannelID); err != nil {
+				h.logger.Printf("Warning: Failed to remove stale pairing: %v", err)
+			}
+			// Stop any stale TTS processing
+			if err := h.ttsProcessor.StopGuildProcessing(guildID); err != nil {
+				h.logger.Printf("Warning: Failed to stop stale TTS processing for guild %s: %v", guildID, err)
+			}
 		}
 	}
 
@@ -133,7 +181,7 @@ func (h *JoinCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interacti
 		return h.respondError(s, i, fmt.Sprintf("Failed to join voice channel: %v", err))
 	}
 
-	// Create channel pairing
+	// Create channel pairing (this will now work since we cleaned up any stale pairings)
 	if err := h.channelService.CreatePairingWithCreator(guildID, voiceChannelID, textChannelID, userID); err != nil {
 		// If pairing creation fails, leave the voice channel
 		h.voiceManager.LeaveChannel(guildID)
@@ -143,6 +191,13 @@ func (h *JoinCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interacti
 	// Auto opt-in the user who invited the bot
 	if err := h.userService.AutoOptIn(userID, guildID); err != nil {
 		h.logger.Printf("Warning: Failed to auto opt-in user %s: %v", userID, err)
+	}
+
+	// Start TTS processing for this guild
+	if err := h.ttsProcessor.StartGuildProcessing(guildID); err != nil {
+		h.logger.Printf("Warning: Failed to start TTS processing for guild %s: %v", guildID, err)
+	} else {
+		h.logger.Printf("Started TTS processing for guild %s", guildID)
 	}
 
 	// Get channel names for response
@@ -189,6 +244,7 @@ type LeaveCommandHandler struct {
 	voiceManager      VoiceManager
 	channelService    ChannelService
 	permissionService PermissionService
+	ttsProcessor      TTSProcessor
 	errorRecovery     *ErrorRecoveryManager
 	logger            *log.Logger
 }
@@ -198,6 +254,7 @@ func NewLeaveCommandHandler(
 	voiceManager VoiceManager,
 	channelService ChannelService,
 	permissionService PermissionService,
+	ttsProcessor TTSProcessor,
 	errorRecovery *ErrorRecoveryManager,
 	logger *log.Logger,
 ) *LeaveCommandHandler {
@@ -205,6 +262,7 @@ func NewLeaveCommandHandler(
 		voiceManager:      voiceManager,
 		channelService:    channelService,
 		permissionService: permissionService,
+		ttsProcessor:      ttsProcessor,
 		errorRecovery:     errorRecovery,
 		logger:            logger,
 	}
@@ -213,7 +271,7 @@ func NewLeaveCommandHandler(
 // Definition returns the Discord slash command definition for the leave command
 func (h *LeaveCommandHandler) Definition() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Name:        "tts-leave",
+		Name:        "darrot-leave",
 		Description: "Stop TTS and leave the voice channel",
 	}
 }
@@ -252,6 +310,13 @@ func (h *LeaveCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interact
 		}
 
 		return h.respondError(s, i, fmt.Sprintf("Failed to leave voice channel: %v", err))
+	}
+
+	// Stop TTS processing for this guild
+	if err := h.ttsProcessor.StopGuildProcessing(guildID); err != nil {
+		h.logger.Printf("Warning: Failed to stop TTS processing for guild %s: %v", guildID, err)
+	} else {
+		h.logger.Printf("Stopped TTS processing for guild %s", guildID)
 	}
 
 	// Remove channel pairing
@@ -355,7 +420,7 @@ func NewControlCommandHandler(
 // Definition returns the Discord slash command definition for TTS control commands
 func (h *ControlCommandHandler) Definition() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Name:        "tts-control",
+		Name:        "darrot-control",
 		Description: "Control TTS playback (pause, resume, skip)",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
@@ -542,7 +607,7 @@ func NewOptInCommandHandler(
 // Definition returns the Discord slash command definition for the opt-in command
 func (h *OptInCommandHandler) Definition() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Name:        "tts-optin",
+		Name:        "darrot-optin",
 		Description: "Manage your TTS opt-in preferences",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
@@ -722,7 +787,7 @@ func NewConfigCommandHandler(
 // Definition returns the Discord slash command definition for the config command
 func (h *ConfigCommandHandler) Definition() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Name:        "tts-config",
+		Name:        "darrot-config",
 		Description: "Configure TTS settings for this server (Administrator only)",
 		Options: []*discordgo.ApplicationCommandOption{
 			{

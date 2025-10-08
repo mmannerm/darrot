@@ -619,3 +619,5 @@ func (hc *HealthChecker) performHealthCheck() {
 
 	log.Printf("Voice connections health: %d/%d healthy", healthyConnections, len(activeGuilds))
 }
+
+// Helper functions are defined in tts_errors.go
