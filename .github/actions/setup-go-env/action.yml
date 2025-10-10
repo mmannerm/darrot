@@ -1,0 +1,60 @@
+name: 'Setup Go Environment'
+description: 'Set up Go and system dependencies for darrot project'
+inputs:
+  go-version:
+    description: 'Go version to install'
+    required: false
+    default: '1.23'
+  cache-key:
+    description: 'Cache key for Go modules'
+    required: false
+    default: ''
+outputs:
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+  go-cache-key:
+    description: 'Generated cache key'
+    value: ${{ steps.cache-key.outputs.key }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+    
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
+    
+    - name: Generate cache key
+      id: cache-key
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.cache-key }}" ]; then
+          echo "key=${{ inputs.cache-key }}" >> $GITHUB_OUTPUT
+        else
+          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Cache Go modules
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ steps.cache-key.outputs.key }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: go mod download
+    
+    - name: Verify dependencies
+      shell: bash
+      run: go mod verify

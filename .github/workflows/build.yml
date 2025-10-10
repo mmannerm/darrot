@@ -1,10 +1,11 @@
-name: Test
+name: Build
 
 on:
   pull_request:
     branches: [ main, develop ]
   push:
     branches: [ main, develop ]
+  workflow_call: # Allow this workflow to be called by other workflows
 
 jobs:
   test:
@@ -13,29 +14,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
-    
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    
-    - name: Download dependencies
-      run: go mod download
-    
-    - name: Verify dependencies
-      run: go mod verify
+    - name: Setup Go Environment
+      uses: ./.github/actions/setup-go-env
     
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out ./...
@@ -68,15 +48,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
+    - name: Setup Go Environment
+      uses: ./.github/actions/setup-go-env
     
     - name: Run go fmt
       run: |
@@ -109,18 +82,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
+    - name: Setup Go Environment
+      uses: ./.github/actions/setup-go-env
     
     - name: Build application
-      run: go build -v -o darrot ./cmd/darrot
+      run: |
+        VERSION="dev-$(git rev-parse --short HEAD)"
+        COMMIT="$(git rev-parse HEAD)"
+        DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        go build -v \
+          -ldflags="-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
+          -o darrot ./cmd/darrot
     
     - name: Test binary
       run: ./darrot --help || true
