@@ -48,7 +48,7 @@ func TestEndToEndVoiceConnection(t *testing.T) {
 		assert.NoError(t, err, "Should successfully play audio")
 
 		// Wait for audio to "play"
-		time.Sleep(150 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 
 		// Step 5: Disconnect from voice channel
 		err = testEnv.voiceManager.LeaveChannel(guildID)

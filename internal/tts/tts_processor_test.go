@@ -314,7 +314,7 @@ func TestTTSProcessor_StartStop(t *testing.T) {
 	}
 
 	// Give it a moment to start
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 1)
 
 	// Test stop
 	err = processor.Stop()
@@ -413,7 +413,6 @@ func TestTTSProcessor_MessageProcessing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start processor: %v", err)
 	}
-	defer processor.Stop()
 
 	// Give it time to process the message with retries
 	maxRetries := 10
@@ -428,7 +427,8 @@ func TestTTSProcessor_MessageProcessing(t *testing.T) {
 				voiceCallLog := voiceManager.getCallLog()
 				for _, voiceCall := range voiceCallLog {
 					if voiceCall == "PlayAudio" {
-						return // Test passed
+						processor.Stop() // Stop after success
+						return           // Test passed
 					}
 				}
 			}
@@ -436,6 +436,7 @@ func TestTTSProcessor_MessageProcessing(t *testing.T) {
 	}
 
 	// If we get here, the test failed
+	processor.Stop()
 	ttsCallLog := ttsManager.getCallLog()
 	voiceCallLog := voiceManager.getCallLog()
 	t.Errorf("Expected TTS processing to complete. TTS calls: %v, Voice calls: %v", ttsCallLog, voiceCallLog)
@@ -491,13 +492,12 @@ func TestTTSProcessor_ErrorHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start processor: %v", err)
 	}
-	defer processor.Stop()
 
 	// Give it time to process the message (should handle error gracefully)
 	// Wait longer since error handling includes retries
-	maxRetries := 20
+	maxRetries := 15
 	for i := 0; i < maxRetries; i++ {
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 50)
 
 		// Check that TTS conversion was attempted
 		ttsCallLog := ttsManager.getCallLog()
@@ -506,13 +506,17 @@ func TestTTSProcessor_ErrorHandling(t *testing.T) {
 			voiceCallLog := voiceManager.getCallLog()
 			for _, call := range voiceCallLog {
 				if call == "PlayAudio" {
+					processor.Stop()
 					t.Error("Expected PlayAudio not to be called when TTS conversion fails")
+					return
 				}
 			}
+			processor.Stop()
 			return // Test passed
 		}
 	}
 
+	processor.Stop()
 	t.Error("Expected TTS conversion to be attempted")
 }
 
@@ -712,7 +716,7 @@ func TestTTSProcessor_MessageTruncation(t *testing.T) {
 	defer processor.Stop()
 
 	// Give it time to process the message (should truncate)
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 20)
 }
 
 func TestTTSProcessor_InactivityAnnouncement(t *testing.T) {
@@ -751,7 +755,7 @@ func TestTTSProcessor_InactivityAnnouncement(t *testing.T) {
 	defer processor.Stop()
 
 	// Let it run for a short time with no messages
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 20)
 
 	// Verify no errors occurred (processor should handle empty queue gracefully)
 	if len(ttsManager.getCallLog()) > 0 {

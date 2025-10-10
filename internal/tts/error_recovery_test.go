@@ -6,6 +6,17 @@ import (
 	"time"
 )
 
+// Helper function to create error recovery manager with fast test configuration
+func newTestErrorRecoveryManager(voiceManager VoiceManager, ttsManager TTSManager, messageQueue MessageQueue, configService ConfigService) *ErrorRecoveryManager {
+	return NewErrorRecoveryManagerWithConfig(voiceManager, ttsManager, messageQueue, configService, ErrorRecoveryConfig{
+		MaxRetries:          3,
+		RetryDelay:          time.Millisecond * 10, // Very fast for tests
+		ConnectionTimeout:   time.Millisecond * 100,
+		HealthCheckInterval: time.Millisecond * 50,
+		MonitorInterval:     time.Millisecond * 20,
+	})
+}
+
 // Mock implementations for testing
 
 type mockVoiceManagerForRecovery struct {
@@ -41,6 +52,8 @@ func (m *mockVoiceManagerForRecovery) GetConnection(guildID string) (*VoiceConne
 
 func (m *mockVoiceManagerForRecovery) PlayAudio(guildID string, audioData []byte) error {
 	if err, exists := m.playAudioErrors[guildID]; exists {
+		// Simulate "fails then succeeds" by removing the error after first attempt
+		delete(m.playAudioErrors, guildID)
 		return err
 	}
 	return nil
@@ -70,6 +83,8 @@ func (m *mockVoiceManagerForRecovery) IsPaused(guildID string) bool {
 func (m *mockVoiceManagerForRecovery) RecoverConnection(guildID string) error {
 	m.recoveryCalls = append(m.recoveryCalls, guildID)
 	if err, exists := m.recoveryErrors[guildID]; exists {
+		// Simulate "fails then succeeds" by removing the error after first attempt
+		delete(m.recoveryErrors, guildID)
 		return err
 	}
 	m.connections[guildID] = true
@@ -108,6 +123,7 @@ func (m *mockVoiceManagerForRecovery) GetActiveConnections() []string {
 type mockTTSManagerForRecovery struct {
 	conversionErrors map[string]error
 	conversionCalls  []ConversionCall
+	globalError      error // Error that affects all conversions (for fatal errors)
 }
 
 type ConversionCall struct {
@@ -120,6 +136,7 @@ func newMockTTSManagerForRecovery() *mockTTSManagerForRecovery {
 	return &mockTTSManagerForRecovery{
 		conversionErrors: make(map[string]error),
 		conversionCalls:  make([]ConversionCall, 0),
+		globalError:      nil,
 	}
 }
 
@@ -131,8 +148,15 @@ func (m *mockTTSManagerForRecovery) ConvertToSpeech(text, voice string, config T
 	}
 	m.conversionCalls = append(m.conversionCalls, call)
 
+	// Check for global error first (for fatal errors that affect all conversions)
+	if m.globalError != nil {
+		return nil, m.globalError
+	}
+
 	// Check for specific error conditions
 	if err, exists := m.conversionErrors[text]; exists {
+		// Remove the error after first use to simulate "retry then succeed"
+		delete(m.conversionErrors, text)
 		return nil, err
 	}
 
@@ -216,6 +240,52 @@ func (m *mockConfigServiceForRecovery) ValidateConfig(config *GuildTTSConfig) er
 	return nil
 }
 
+type mockTTSProcessorForRecovery struct{}
+
+func (m *mockTTSProcessorForRecovery) Start() error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) Stop() error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) StartGuildProcessing(guildID string) error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) StopGuildProcessing(guildID string) error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) GetProcessingStatus(guildID string) (bool, error) {
+	return false, nil
+}
+
+func (m *mockTTSProcessorForRecovery) GetActiveGuilds() []string {
+	return []string{}
+}
+
+func (m *mockTTSProcessorForRecovery) SkipCurrentMessage(guildID string) error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) PauseProcessing(guildID string) error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) ResumeProcessing(guildID string) error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) ClearQueue(guildID string) error {
+	return nil
+}
+
+func (m *mockTTSProcessorForRecovery) GetQueueSize(guildID string) int {
+	return 0
+}
+
 // Test cases
 
 func TestErrorRecoveryManager_HandleVoiceDisconnection(t *testing.T) {
@@ -260,7 +330,7 @@ func TestErrorRecoveryManager_HandleVoiceDisconnection(t *testing.T) {
 				mockVoice.recoveryErrors[tt.guildID] = tt.recoveryError
 			}
 
-			erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+			erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 			err := erm.HandleVoiceDisconnection(tt.guildID)
 
@@ -337,10 +407,16 @@ func TestErrorRecoveryManager_HandleTTSFailure(t *testing.T) {
 
 			// Set up conversion error for first attempt only
 			if tt.conversionError != nil {
-				mockTTS.conversionErrors[tt.text] = tt.conversionError
+				if tt.name == "fatal error" {
+					// For fatal errors, set global error to affect all conversions
+					mockTTS.globalError = tt.conversionError
+				} else {
+					// For retryable errors, set specific text error
+					mockTTS.conversionErrors[tt.text] = tt.conversionError
+				}
 			}
 
-			erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+			erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 			config := TTSConfig{
 				Voice:  tt.voice,
@@ -421,7 +497,7 @@ func TestErrorRecoveryManager_HandleAudioPlaybackFailure(t *testing.T) {
 				mockVoice.playAudioErrors[tt.guildID] = tt.playbackError
 			}
 
-			erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+			erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 			err := erm.HandleAudioPlaybackFailure(tt.guildID, tt.audioData)
 
@@ -499,7 +575,7 @@ func TestErrorRecoveryManager_CreateUserFriendlyErrorMessage(t *testing.T) {
 			mockQueue := &mockMessageQueueForRecovery{}
 			mockConfig := &mockConfigServiceForRecovery{}
 
-			erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+			erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 			result := erm.CreateUserFriendlyErrorMessage(tt.err, tt.guildID)
 
@@ -516,7 +592,7 @@ func TestErrorRecoveryManager_ErrorStats(t *testing.T) {
 	mockQueue := &mockMessageQueueForRecovery{}
 	mockConfig := &mockConfigServiceForRecovery{}
 
-	erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+	erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 	guildID := "test-guild"
 
@@ -582,7 +658,7 @@ func TestErrorRecoveryManager_StartStop(t *testing.T) {
 	mockQueue := &mockMessageQueueForRecovery{}
 	mockConfig := &mockConfigServiceForRecovery{}
 
-	erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+	erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 	// Test start
 	err := erm.Start()
@@ -591,7 +667,7 @@ func TestErrorRecoveryManager_StartStop(t *testing.T) {
 	}
 
 	// Give it a moment to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 
 	// Test stop
 	err = erm.Stop()
@@ -610,7 +686,7 @@ func TestConnectionMonitor_HealthChecking(t *testing.T) {
 	guildID := "test-guild"
 	mockVoice.connections[guildID] = true
 
-	erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+	erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 	// Test connection monitoring
 	erm.connectionMonitor.checkConnection(guildID)
@@ -649,7 +725,7 @@ func TestHealthChecker_TTSHealthCheck(t *testing.T) {
 	mockQueue := &mockMessageQueueForRecovery{}
 	mockConfig := &mockConfigServiceForRecovery{}
 
-	erm := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+	erm := newTestErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 	// Test health check
 	erm.healthChecker.performHealthCheck()

@@ -79,17 +79,48 @@ type HealthChecker struct {
 
 // NewErrorRecoveryManager creates a new comprehensive error recovery manager
 func NewErrorRecoveryManager(voiceManager VoiceManager, ttsManager TTSManager, messageQueue MessageQueue, configService ConfigService) *ErrorRecoveryManager {
+	return NewErrorRecoveryManagerWithConfig(voiceManager, ttsManager, messageQueue, configService, ErrorRecoveryConfig{})
+}
+
+// ErrorRecoveryConfig allows customizing error recovery behavior
+type ErrorRecoveryConfig struct {
+	MaxRetries          int
+	RetryDelay          time.Duration
+	ConnectionTimeout   time.Duration
+	HealthCheckInterval time.Duration
+	MonitorInterval     time.Duration
+}
+
+// NewErrorRecoveryManagerWithConfig creates a new error recovery manager with custom configuration
+func NewErrorRecoveryManagerWithConfig(voiceManager VoiceManager, ttsManager TTSManager, messageQueue MessageQueue, configService ConfigService, config ErrorRecoveryConfig) *ErrorRecoveryManager {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	// Set defaults if not provided
+	if config.MaxRetries == 0 {
+		config.MaxRetries = 3
+	}
+	if config.RetryDelay == 0 {
+		config.RetryDelay = time.Second * 2
+	}
+	if config.ConnectionTimeout == 0 {
+		config.ConnectionTimeout = time.Second * 10
+	}
+	if config.HealthCheckInterval == 0 {
+		config.HealthCheckInterval = time.Minute * 2
+	}
+	if config.MonitorInterval == 0 {
+		config.MonitorInterval = time.Second * 30
+	}
 
 	erm := &ErrorRecoveryManager{
 		voiceManager:        voiceManager,
 		ttsManager:          ttsManager,
 		messageQueue:        messageQueue,
 		configService:       configService,
-		maxRetries:          3,
-		retryDelay:          time.Second * 2,
-		connectionTimeout:   time.Second * 10,
-		healthCheckInterval: time.Minute * 2,
+		maxRetries:          config.MaxRetries,
+		retryDelay:          config.RetryDelay,
+		connectionTimeout:   config.ConnectionTimeout,
+		healthCheckInterval: config.HealthCheckInterval,
 		fallbackVoice:       DefaultVoice,
 		errorStats:          make(map[string]*ErrorStats),
 		ctx:                 ctx,
@@ -100,7 +131,7 @@ func NewErrorRecoveryManager(voiceManager VoiceManager, ttsManager TTSManager, m
 	erm.connectionMonitor = &ConnectionMonitor{
 		voiceManager:    voiceManager,
 		errorRecovery:   erm,
-		checkInterval:   time.Second * 30,
+		checkInterval:   config.MonitorInterval,
 		connectionState: make(map[string]*ConnectionState),
 	}
 
@@ -109,7 +140,7 @@ func NewErrorRecoveryManager(voiceManager VoiceManager, ttsManager TTSManager, m
 		ttsManager:    ttsManager,
 		voiceManager:  voiceManager,
 		errorRecovery: erm,
-		checkInterval: time.Minute * 5,
+		checkInterval: config.HealthCheckInterval,
 		testText:      "Health check test",
 		testConfig: TTSConfig{
 			Voice:  DefaultVoice,
@@ -500,6 +531,9 @@ func (erm *ErrorRecoveryManager) resetErrorStats(guildID string) {
 
 	if stats, exists := erm.errorStats[guildID]; exists {
 		stats.ConsecutiveFailures = 0
+		stats.VoiceConnectionErrors = 0
+		stats.TTSConversionErrors = 0
+		stats.AudioPlaybackErrors = 0
 		stats.LastSuccessfulActivity = time.Now()
 	}
 }

@@ -8,6 +8,17 @@ import (
 	"time"
 )
 
+// Helper function to create error recovery manager with fast test configuration
+func newFastErrorRecoveryManager(voiceManager VoiceManager, ttsManager TTSManager, messageQueue MessageQueue, configService ConfigService) *ErrorRecoveryManager {
+	return NewErrorRecoveryManagerWithConfig(voiceManager, ttsManager, messageQueue, configService, ErrorRecoveryConfig{
+		MaxRetries:          3,
+		RetryDelay:          time.Millisecond * 10,
+		ConnectionTimeout:   time.Millisecond * 100,
+		HealthCheckInterval: time.Millisecond * 50,
+		MonitorInterval:     time.Millisecond * 20,
+	})
+}
+
 // TestErrorHandlingIntegration tests the complete error handling and recovery system
 func TestErrorHandlingIntegration(t *testing.T) {
 	// Create test components
@@ -18,7 +29,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 	mockUser := &mockUserServiceForIntegration{}
 
 	// Create error recovery manager
-	errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+	errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 	// Create TTS processor with error recovery
 	processor := NewTTSProcessor(mockTTS, mockVoice, mockQueue, mockConfig, mockUser)
@@ -31,7 +42,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 		}
 
 		// Give it a moment to start
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 
 		err = processor.Stop()
 		if err != nil {
@@ -165,7 +176,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 		}
 
 		// Give health checker time to run
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
 		// Stop error recovery
 		err = errorRecovery.Stop()
@@ -187,16 +198,20 @@ func TestCommandHandlerErrorIntegration(t *testing.T) {
 	mockConfig := &mockConfigServiceForRecovery{}
 
 	// Create error recovery manager
-	errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+	errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 	logger := log.New(os.Stdout, "[TEST] ", log.LstdFlags)
 
 	// Create command handlers with error recovery
+	// Create a mock TTS processor for testing
+	mockTTSProcessor := &mockTTSProcessorForRecovery{}
+
 	joinHandler := NewJoinCommandHandler(
 		mockVoice,
 		mockChannel,
 		mockPermission,
 		mockUser,
+		mockTTSProcessor,
 		errorRecovery,
 		logger,
 	)
@@ -205,6 +220,7 @@ func TestCommandHandlerErrorIntegration(t *testing.T) {
 		mockVoice,
 		mockChannel,
 		mockPermission,
+		mockTTSProcessor,
 		errorRecovery,
 		logger,
 	)
@@ -308,7 +324,7 @@ func TestErrorRecoveryRequirements(t *testing.T) {
 		mockQueue := &mockMessageQueueForRecovery{}
 		mockConfig := &mockConfigServiceForRecovery{}
 
-		errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+		errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 		// Test that voice connection failures are handled gracefully
 		err := errors.New("failed to join voice channel")
@@ -333,7 +349,7 @@ func TestErrorRecoveryRequirements(t *testing.T) {
 		mockQueue := &mockMessageQueueForRecovery{}
 		mockConfig := &mockConfigServiceForRecovery{}
 
-		errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+		errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 		// Test voice connection recovery
 		guildID := "test-guild-req-1-6"
@@ -353,7 +369,7 @@ func TestErrorRecoveryRequirements(t *testing.T) {
 		mockQueue := &mockMessageQueueForRecovery{}
 		mockConfig := &mockConfigServiceForRecovery{}
 
-		errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+		errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 		guildID := "test-guild-req-9-1"
 		mockVoice.connections[guildID] = true
@@ -378,7 +394,7 @@ func TestErrorRecoveryRequirements(t *testing.T) {
 		mockQueue := &mockMessageQueueForRecovery{}
 		mockConfig := &mockConfigServiceForRecovery{}
 
-		errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+		errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 		guildID := "test-guild-req-9-2"
 		text := "Test message"
@@ -407,7 +423,7 @@ func TestErrorRecoveryRequirements(t *testing.T) {
 		mockQueue := &mockMessageQueueForRecovery{}
 		mockConfig := &mockConfigServiceForRecovery{}
 
-		errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+		errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 		// Test permission error messages
 		permissionErr := errors.New("permission denied")
@@ -427,7 +443,7 @@ func TestErrorRecoveryRequirements(t *testing.T) {
 		mockQueue := &mockMessageQueueForRecovery{}
 		mockConfig := &mockConfigServiceForRecovery{}
 
-		errorRecovery := NewErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
+		errorRecovery := newFastErrorRecoveryManager(mockVoice, mockTTS, mockQueue, mockConfig)
 
 		guildID := "test-guild-req-9-4"
 
