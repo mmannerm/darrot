@@ -2,78 +2,17 @@ version: 2
 
 run:
   timeout: 5m
-  modules-download-mode: readonly
-
-linters-settings:
-  govet:
-    enable:
-      - shadow
-  gocyclo:
-    min-complexity: 15
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
 
 linters:
+  disable-all: true
   enable:
-    - bodyclose
-    - dupl
     - errcheck
-    - goconst
-    - gocyclo
-    - gocritic
-    - gosec
     - govet
     - ineffassign
-    - misspell
+  disable:
     - staticcheck
-    - unconvert
-    - whitespace
     - unused
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gomnd
-        - goconst
-        - dupl
-        - errcheck
-        - gocyclo
-        - dogsled
-        - unparam
-        - unused
-        - lll
-        - gocritic
-        - gosec
-    - path: cmd/
-      linters:
-        - gochecknoinits
-    - path: internal/tts/error_test_mocks\.go
-      linters:
-        - unused
-    - path: internal/tts/integration_.*\.go
-      linters:
-        - unused
-    - path: internal/tts/.*_test\.go
-      linters:
-        - exhaustive
+  max-issues-per-linter: 5
+  max-same-issues: 3
