@@ -5,10 +5,13 @@ on:
     branches: [ main, develop ]
   push:
     branches: [ main, develop ]
+  workflow_call: # Allow this workflow to be called by other workflows
 
 jobs:
-  test:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      go-cache-key: ${{ steps.cache-key.outputs.key }}
     
     steps:
     - uses: actions/checkout@v4
@@ -18,16 +21,20 @@ jobs:
       with:
         go-version: '1.23'
     
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
+    
+    - name: Generate cache key
+      id: cache-key
+      run: echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}" >> $GITHUB_OUTPUT
     
     - name: Cache Go modules
       uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        key: ${{ steps.cache-key.outputs.key }}
         restore-keys: |
           ${{ runner.os }}-go-
     
@@ -36,6 +43,31 @@ jobs:
     
     - name: Verify dependencies
       run: go mod verify
+
+  test:
+    runs-on: ubuntu-latest
+    needs: setup
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
+    
+    - name: Restore Go modules cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ needs.setup.outputs.go-cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out ./...
@@ -64,6 +96,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    needs: setup
     
     steps:
     - uses: actions/checkout@v4
@@ -73,10 +106,18 @@ jobs:
       with:
         go-version: '1.23'
     
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
+    
+    - name: Restore Go modules cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ needs.setup.outputs.go-cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     
     - name: Run go fmt
       run: |
@@ -104,7 +145,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: [test, lint]
+    needs: [setup, test, lint]
     
     steps:
     - uses: actions/checkout@v4
@@ -114,10 +155,18 @@ jobs:
       with:
         go-version: '1.23'
     
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
+    
+    - name: Restore Go modules cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ needs.setup.outputs.go-cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     
     - name: Build application
       run: go build -v -o darrot ./cmd/darrot

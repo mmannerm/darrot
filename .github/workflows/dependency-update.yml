@@ -20,7 +20,7 @@ jobs:
       with:
         go-version: '1.23'
     
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
@@ -29,11 +29,6 @@ jobs:
       run: |
         go get -u ./...
         go mod tidy
-    
-    - name: Run tests
-      run: go test -v ./...
-      env:
-        SKIP_INTEGRATION_TESTS: "true"
     
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v7
@@ -49,12 +44,17 @@ jobs:
           ### Changes
           - Updated all Go modules to latest compatible versions
           - Ran `go mod tidy` to clean up dependencies
-          - All tests pass with updated dependencies
+          - Will be validated by the Build workflow when PR is created
           
           ### Testing
-          - ✅ All existing tests pass
-          - ✅ Dependencies verified with `go mod verify`
+          - 🔄 Build workflow will run automatically to validate changes
+          - ✅ Dependencies updated and tidied
+          - ✅ Ready for automated testing via PR checks
           
           This is an automated PR created by the dependency update workflow.
+          The Build workflow will automatically run to validate all changes.
         branch: chore/update-dependencies
         delete-branch: true
+
+  # The build workflow will automatically run when the PR is created
+  # This ensures proper validation using the same pipeline as regular PRs
