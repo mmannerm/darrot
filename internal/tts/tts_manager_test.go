@@ -1,6 +1,7 @@
 package tts
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -527,6 +528,21 @@ func TestGoogleTTSManager_ConvertToSpeech_Integration(t *testing.T) {
 		t.Skip("Skipping integration test - no Google Cloud credentials available")
 	}
 	defer manager.Close()
+
+	// Test with a simple conversion first to check if credentials work
+	testConfig := TTSConfig{
+		Voice:  "en-US-Standard-A",
+		Speed:  1.0,
+		Volume: 1.0,
+		Format: AudioFormatPCM,
+	}
+
+	_, testErr := manager.ConvertToSpeech("test", "", testConfig)
+	if testErr != nil && (strings.Contains(testErr.Error(), "PermissionDenied") ||
+		strings.Contains(testErr.Error(), "quota project") ||
+		strings.Contains(testErr.Error(), "Application Default Credentials")) {
+		t.Skip("Skipping integration test - Google Cloud credentials not properly configured")
+	}
 
 	config := TTSConfig{
 		Voice:  "en-US-Standard-A",
