@@ -2,7 +2,6 @@ package tts
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -65,13 +64,11 @@ func (mq *MessageQueueImpl) Enqueue(message *QueuedMessage) error {
 	// Check if queue is at max capacity (Requirement 4.3)
 	if len(queue.messages) >= queue.maxSize {
 		// Remove oldest message and indicate skip
-		skippedMessage := queue.messages[0]
 		queue.messages = queue.messages[1:]
 
 		// Log or handle the skip indication
 		// In a real implementation, this would notify users about the skip
-		fmt.Printf("Queue overflow for guild %s: skipped message from %s\n",
-			message.GuildID, skippedMessage.Username)
+		// Queue overflow logging removed per user request
 	}
 
 	// Add new message to queue
@@ -176,12 +173,10 @@ func (mq *MessageQueueImpl) SetMaxSize(guildID string, size int) error {
 	if len(queue.messages) > size {
 		// Keep the most recent messages
 		startIndex := len(queue.messages) - size
-		skippedCount := startIndex
 		queue.messages = queue.messages[startIndex:]
 
 		// Log or handle the skip indication
-		fmt.Printf("Queue size reduced for guild %s: skipped %d older messages\n",
-			guildID, skippedCount)
+		// Queue size reduction logging removed per user request
 	}
 
 	return nil

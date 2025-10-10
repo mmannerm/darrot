@@ -152,6 +152,11 @@ func TestMessageQueuePerformance(t *testing.T) {
 
 	t.Run("HighVolumeMessageProcessing", func(t *testing.T) {
 		numMessages := 10000
+
+		// Set max queue size to accommodate all messages
+		err := messageQueue.SetMaxSize(guildID, numMessages)
+		require.NoError(t, err, "Should set max queue size")
+
 		startTime := time.Now()
 
 		// Enqueue messages
