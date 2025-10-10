@@ -427,8 +427,8 @@ func TestTTSProcessor_MessageProcessing(t *testing.T) {
 				voiceCallLog := voiceManager.getCallLog()
 				for _, voiceCall := range voiceCallLog {
 					if voiceCall == "PlayAudio" {
-						processor.Stop() // Stop after success
-						return           // Test passed
+						_ = processor.Stop() // Stop after success
+						return               // Test passed
 					}
 				}
 			}
@@ -436,7 +436,7 @@ func TestTTSProcessor_MessageProcessing(t *testing.T) {
 	}
 
 	// If we get here, the test failed
-	processor.Stop()
+	_ = processor.Stop()
 	ttsCallLog := ttsManager.getCallLog()
 	voiceCallLog := voiceManager.getCallLog()
 	t.Errorf("Expected TTS processing to complete. TTS calls: %v, Voice calls: %v", ttsCallLog, voiceCallLog)
@@ -506,7 +506,7 @@ func TestTTSProcessor_ErrorHandling(t *testing.T) {
 			voiceCallLog := voiceManager.getCallLog()
 			for _, call := range voiceCallLog {
 				if call == "PlayAudio" {
-					processor.Stop()
+					_ = processor.Stop()
 					t.Error("Expected PlayAudio not to be called when TTS conversion fails")
 					return
 				}
@@ -516,7 +516,7 @@ func TestTTSProcessor_ErrorHandling(t *testing.T) {
 		}
 	}
 
-	processor.Stop()
+	_ = processor.Stop()
 	t.Error("Expected TTS conversion to be attempted")
 }
 

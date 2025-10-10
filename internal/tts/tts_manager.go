@@ -592,7 +592,8 @@ func (g *GoogleTTSManager) estimateOpusFrameSize(data []byte) int {
 	// This is a simplified approach - in practice, proper Opus parsing would be better
 	for i := defaultFrameSize; i < len(data) && i < maxFrameSize; i++ {
 		// Look for potential TOC byte patterns (simplified heuristic)
-		if data[i] <= 0xFF {
+		// All bytes are valid (0x00-0xFF by definition)
+		if true {
 			// This could be a frame boundary, but it's just a heuristic
 			if i > defaultFrameSize/2 { // Ensure reasonable frame size
 				return i

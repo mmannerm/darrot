@@ -354,7 +354,7 @@ func TestHasChannelAccess(t *testing.T) {
 
 	t.Run("Text channel access with proper permissions", func(t *testing.T) {
 		// Set permissions for text channel access
-		permissions := int64(discordgo.PermissionReadMessages | discordgo.PermissionViewChannel)
+		permissions := int64(discordgo.PermissionViewChannel)
 		mockSession.SetUserChannelPermissions(userID, textChannelID, permissions)
 
 		hasAccess, err := permService.HasChannelAccess(userID, textChannelID)

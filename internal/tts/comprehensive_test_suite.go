@@ -403,7 +403,7 @@ func testPerformanceValidation(t *testing.T) {
 				Content:   fmt.Sprintf("Memory test message %d with additional content", i),
 				Timestamp: time.Now(),
 			}
-			testEnv.messageQueue.Enqueue(message)
+			_ = testEnv.messageQueue.Enqueue(message)
 		}
 
 		runtime.GC()

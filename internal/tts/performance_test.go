@@ -43,13 +43,13 @@ func BenchmarkMessageQueueOperations(b *testing.B) {
 			Content:   fmt.Sprintf("Setup message %d", i),
 			Timestamp: time.Now(),
 		}
-		messageQueue.Enqueue(message)
+		_ = messageQueue.Enqueue(message)
 	}
 
 	b.Run("Dequeue", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			messageQueue.Dequeue(guildID)
+			_, _ = messageQueue.Dequeue(guildID)
 		}
 	})
 
@@ -111,7 +111,7 @@ func BenchmarkConcurrentOperations(b *testing.B) {
 					Content:   fmt.Sprintf("Concurrent message %d", i),
 					Timestamp: time.Now(),
 				}
-				messageQueue.Enqueue(message)
+				_ = messageQueue.Enqueue(message)
 				i++
 			}
 		})
