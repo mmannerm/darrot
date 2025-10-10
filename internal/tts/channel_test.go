@@ -1,6 +1,7 @@
 package tts
 
 import (
+	"log"
 	"os"
 	"testing"
 
@@ -60,7 +61,10 @@ func setupChannelServiceTest(t *testing.T) (*ChannelServiceImpl, *StorageService
 }
 
 func cleanupChannelServiceTest(tempDir string) {
-	os.RemoveAll(tempDir)
+	if err := os.RemoveAll(tempDir); err != nil {
+		// Log error but don't fail test cleanup
+		log.Printf("Failed to remove temp dir %s: %v", tempDir, err)
+	}
 }
 
 func TestNewChannelService(t *testing.T) {

@@ -28,7 +28,9 @@ func BenchmarkMessageQueueOperations(b *testing.B) {
 				Content:   fmt.Sprintf("Benchmark message %d", i),
 				Timestamp: time.Now(),
 			}
-			messageQueue.Enqueue(message)
+			if err := messageQueue.Enqueue(message); err != nil {
+				b.Fatalf("Failed to enqueue message: %v", err)
+			}
 		}
 	})
 

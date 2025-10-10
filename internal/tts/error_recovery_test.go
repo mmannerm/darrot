@@ -708,7 +708,7 @@ func TestConnectionMonitor_HealthChecking(t *testing.T) {
 	erm.connectionMonitor.checkConnection(guildID)
 
 	erm.connectionMonitor.mu.RLock()
-	state, _ = erm.connectionMonitor.connectionState[guildID]
+	state = erm.connectionMonitor.connectionState[guildID]
 	erm.connectionMonitor.mu.RUnlock()
 
 	if state.IsHealthy {

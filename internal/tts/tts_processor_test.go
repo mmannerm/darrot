@@ -511,7 +511,9 @@ func TestTTSProcessor_ErrorHandling(t *testing.T) {
 					return
 				}
 			}
-			processor.Stop()
+			if err := processor.Stop(); err != nil {
+				t.Logf("Error stopping processor: %v", err)
+			}
 			return // Test passed
 		}
 	}
@@ -713,7 +715,11 @@ func TestTTSProcessor_MessageTruncation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start processor: %v", err)
 	}
-	defer processor.Stop()
+	defer func() {
+		if err := processor.Stop(); err != nil {
+			t.Logf("Error stopping processor: %v", err)
+		}
+	}()
 
 	// Give it time to process the message (should truncate)
 	time.Sleep(time.Millisecond * 20)
@@ -752,7 +758,11 @@ func TestTTSProcessor_InactivityAnnouncement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start processor: %v", err)
 	}
-	defer processor.Stop()
+	defer func() {
+		if err := processor.Stop(); err != nil {
+			t.Logf("Error stopping processor: %v", err)
+		}
+	}()
 
 	// Let it run for a short time with no messages
 	time.Sleep(time.Millisecond * 20)
@@ -761,6 +771,7 @@ func TestTTSProcessor_InactivityAnnouncement(t *testing.T) {
 	if len(ttsManager.getCallLog()) > 0 {
 		// If TTS was called, it might be for inactivity announcement
 		// This is acceptable behavior
+		t.Logf("TTS was called %d times, which is acceptable for inactivity handling", len(ttsManager.getCallLog()))
 	}
 }
 

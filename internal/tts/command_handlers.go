@@ -957,7 +957,8 @@ func (h *ConfigCommandHandler) handleRoleAction(s *discordgo.Session, i *discord
 				return h.respondError(s, i, "Role is already in the required roles list.")
 			}
 		}
-		newRoles = append(currentRoles, roleID)
+		currentRoles = append(currentRoles, roleID)
+		newRoles = currentRoles
 		actionMessage = "Role added to required roles:"
 	case "remove":
 		// Remove role from list

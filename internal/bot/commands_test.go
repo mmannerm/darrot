@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/stretchr/testify/assert"
 )
 
 // MockCommandHandler implements CommandHandler for testing
@@ -240,8 +241,10 @@ func TestCommandRouter_GetRegisteredCommands(t *testing.T) {
 	handler1 := &MockCommandHandler{name: "test1", description: "First test command"}
 	handler2 := &MockCommandHandler{name: "test2", description: "Second test command"}
 
-	router.RegisterHandler(handler1)
-	router.RegisterHandler(handler2)
+	err := router.RegisterHandler(handler1)
+	assert.NoError(t, err)
+	err = router.RegisterHandler(handler2)
+	assert.NoError(t, err)
 
 	// Get registered commands
 	commands = router.GetRegisteredCommands()
@@ -275,7 +278,8 @@ func TestCommandRouter_GetHandlerCount(t *testing.T) {
 
 	// Register one handler
 	handler1 := &MockCommandHandler{name: "test1", description: "First test command"}
-	router.RegisterHandler(handler1)
+	err := router.RegisterHandler(handler1)
+	assert.NoError(t, err)
 
 	if router.GetHandlerCount() != 1 {
 		t.Errorf("expected 1 handler, got %d", router.GetHandlerCount())
@@ -283,7 +287,8 @@ func TestCommandRouter_GetHandlerCount(t *testing.T) {
 
 	// Register another handler
 	handler2 := &MockCommandHandler{name: "test2", description: "Second test command"}
-	router.RegisterHandler(handler2)
+	err = router.RegisterHandler(handler2)
+	assert.NoError(t, err)
 
 	if router.GetHandlerCount() != 2 {
 		t.Errorf("expected 2 handlers, got %d", router.GetHandlerCount())

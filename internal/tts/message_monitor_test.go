@@ -284,10 +284,8 @@ func TestMessageMonitor_handleMessageCreate(t *testing.T) {
 				if queuedMsg.Content != tt.expectedContent {
 					t.Errorf("Expected content %s, got %s", tt.expectedContent, queuedMsg.Content)
 				}
-			} else {
-				if len(messages) != 0 {
-					t.Errorf("Expected no messages to be queued, got %d", len(messages))
-				}
+			} else if len(messages) != 0 {
+				t.Errorf("Expected no messages to be queued, got %d", len(messages))
 			}
 		})
 	}

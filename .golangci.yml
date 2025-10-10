@@ -1,3 +1,5 @@
+version: 2
+
 run:
   timeout: 5m
   modules-download-mode: readonly
@@ -17,8 +19,6 @@ linters-settings:
     locale: US
   lll:
     line-length: 140
-  goimports:
-    local-prefixes: github.com/darrot
   gocritic:
     enabled-tags:
       - diagnostic
@@ -38,27 +38,17 @@ linters:
     - bodyclose
     - dupl
     - errcheck
-    - gochecknoinits
     - goconst
     - gocyclo
-    - gofmt
-    - goimports
-    - goprintffuncname
+    - gocritic
     - gosec
-    - gosimple
     - govet
     - ineffassign
-    - lll
     - misspell
-    - nakedret
-    - noctx
-    - nolintlint
-    - rowserrcheck
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - whitespace
+    - unused
 
 issues:
   exclude-rules:

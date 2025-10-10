@@ -255,8 +255,8 @@ func TestBot_RegisterCommands_ErrorHandling(t *testing.T) {
 	}
 
 	// Verify the error message is appropriate
-	expectedErrorMsg := "Discord session not properly initialized"
-	if err != nil && !strings.Contains(err.Error(), expectedErrorMsg) {
+	expectedErrorMsg := "discord session not properly initialized"
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), expectedErrorMsg) {
 		t.Errorf("registerCommands() expected error containing '%s', got: %v", expectedErrorMsg, err)
 	}
 }
@@ -294,10 +294,8 @@ func TestBot_RegisterCommands_Integration(t *testing.T) {
 	}
 	if testCmd == nil {
 		t.Errorf("Expected to find test command in registered commands")
-	} else {
-		if testCmd.Description == "" {
-			t.Errorf("Expected test command to have a description")
-		}
+	} else if testCmd.Description == "" {
+		t.Errorf("Expected test command to have a description")
 	}
 }
 

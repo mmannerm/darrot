@@ -11,7 +11,11 @@ func TestUserService_SetOptInStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create storage service and user service
 	storage, err := NewStorageService(tempDir)
@@ -101,7 +105,11 @@ func TestUserService_IsOptedIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create storage service and user service
 	storage, err := NewStorageService(tempDir)
@@ -133,7 +141,9 @@ func TestUserService_IsOptedIn(t *testing.T) {
 			userID:  "user123",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", true)
+				if err := userService.SetOptInStatus("user123", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
 			},
 			want:    true,
 			wantErr: false,
@@ -143,7 +153,9 @@ func TestUserService_IsOptedIn(t *testing.T) {
 			userID:  "user123",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", false)
+				if err := userService.SetOptInStatus("user123", "guild456", false); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
 			},
 			want:    false,
 			wantErr: false,
@@ -171,8 +183,12 @@ func TestUserService_IsOptedIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up any existing test data
-			os.RemoveAll(tempDir)
-			os.MkdirAll(tempDir, 0755)
+			if err := os.RemoveAll(tempDir); err != nil {
+				t.Logf("Failed to remove temp dir: %v", err)
+			}
+			if err := os.MkdirAll(tempDir, 0755); err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
 
 			// Run setup
 			tt.setup()
@@ -208,7 +224,11 @@ func TestUserService_GetOptedInUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create storage service and user service
 	storage, err := NewStorageService(tempDir)
@@ -237,7 +257,9 @@ func TestUserService_GetOptedInUsers(t *testing.T) {
 			name:    "single opted-in user",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", true)
+				if err := userService.SetOptInStatus("user123", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
 			},
 			want:    []string{"user123"},
 			wantErr: false,
@@ -246,9 +268,15 @@ func TestUserService_GetOptedInUsers(t *testing.T) {
 			name:    "multiple opted-in users",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", true)
-				userService.SetOptInStatus("user456", "guild456", true)
-				userService.SetOptInStatus("user789", "guild456", false) // This one should not be included
+				if err := userService.SetOptInStatus("user123", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
+				if err := userService.SetOptInStatus("user456", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
+				if err := userService.SetOptInStatus("user789", "guild456", false); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				} // This one should not be included
 			},
 			want:    []string{"user123", "user456"},
 			wantErr: false,
@@ -257,8 +285,12 @@ func TestUserService_GetOptedInUsers(t *testing.T) {
 			name:    "users from different guilds",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", true)
-				userService.SetOptInStatus("user456", "guild789", true) // Different guild, should not be included
+				if err := userService.SetOptInStatus("user123", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
+				if err := userService.SetOptInStatus("user456", "guild789", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				} // Different guild, should not be included
 			},
 			want:    []string{"user123"},
 			wantErr: false,
@@ -276,8 +308,12 @@ func TestUserService_GetOptedInUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up any existing test data
-			os.RemoveAll(tempDir)
-			os.MkdirAll(tempDir, 0755)
+			if err := os.RemoveAll(tempDir); err != nil {
+				t.Logf("Failed to remove temp dir: %v", err)
+			}
+			if err := os.MkdirAll(tempDir, 0755); err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
 
 			// Run setup
 			tt.setup()
@@ -338,7 +374,11 @@ func TestUserService_AutoOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create storage service and user service
 	storage, err := NewStorageService(tempDir)
@@ -378,7 +418,9 @@ func TestUserService_AutoOptIn(t *testing.T) {
 			userID:  "user123",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", true)
+				if err := userService.SetOptInStatus("user123", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
 			},
 			wantErr: false,
 			checkFn: func(t *testing.T) {
@@ -396,7 +438,9 @@ func TestUserService_AutoOptIn(t *testing.T) {
 			userID:  "user123",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", false)
+				if err := userService.SetOptInStatus("user123", "guild456", false); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
 			},
 			wantErr: false,
 			checkFn: func(t *testing.T) {
@@ -432,8 +476,12 @@ func TestUserService_AutoOptIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up any existing test data
-			os.RemoveAll(tempDir)
-			os.MkdirAll(tempDir, 0755)
+			if err := os.RemoveAll(tempDir); err != nil {
+				t.Logf("Failed to remove temp dir: %v", err)
+			}
+			if err := os.MkdirAll(tempDir, 0755); err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
 
 			// Run setup
 			tt.setup()
@@ -468,7 +516,11 @@ func TestUserService_GetUserPreferences(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create storage service and user service
 	storage, err := NewStorageService(tempDir)
@@ -510,7 +562,9 @@ func TestUserService_GetUserPreferences(t *testing.T) {
 			userID:  "user123",
 			guildID: "guild456",
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", true)
+				if err := userService.SetOptInStatus("user123", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
 			},
 			wantErr: false,
 			checkFn: func(t *testing.T, prefs *UserTTSPreferences) {
@@ -548,8 +602,12 @@ func TestUserService_GetUserPreferences(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up any existing test data
-			os.RemoveAll(tempDir)
-			os.MkdirAll(tempDir, 0755)
+			if err := os.RemoveAll(tempDir); err != nil {
+				t.Logf("Failed to remove temp dir: %v", err)
+			}
+			if err := os.MkdirAll(tempDir, 0755); err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
 
 			// Run setup
 			tt.setup()
@@ -584,7 +642,11 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create storage service and user service
 	storage, err := NewStorageService(tempDir)
@@ -636,7 +698,9 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 				SpeedModifier:  0.8,
 			},
 			setup: func() {
-				userService.SetOptInStatus("user123", "guild456", true)
+				if err := userService.SetOptInStatus("user123", "guild456", true); err != nil {
+					t.Fatalf("Failed to set opt-in status: %v", err)
+				}
 			},
 			wantErr: false,
 			checkFn: func(t *testing.T) {
@@ -726,8 +790,12 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up any existing test data
-			os.RemoveAll(tempDir)
-			os.MkdirAll(tempDir, 0755)
+			if err := os.RemoveAll(tempDir); err != nil {
+				t.Logf("Failed to remove temp dir: %v", err)
+			}
+			if err := os.MkdirAll(tempDir, 0755); err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
 
 			// Run setup
 			tt.setup()
@@ -762,7 +830,11 @@ func TestUserService_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create storage service and user service
 	storage, err := NewStorageService(tempDir)

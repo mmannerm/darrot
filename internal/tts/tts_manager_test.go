@@ -46,7 +46,9 @@ func TestNewGoogleTTSManager(t *testing.T) {
 				assert.NotNil(t, manager)
 
 				if manager != nil {
-					manager.Close()
+					if err := manager.Close(); err != nil {
+						t.Logf("Error closing manager: %v", err)
+					}
 				}
 			}
 		})
@@ -533,7 +535,11 @@ func TestGoogleTTSManager_ConvertToSpeech_Integration(t *testing.T) {
 	if err != nil {
 		t.Skip("Skipping integration test - no Google Cloud credentials available")
 	}
-	defer manager.Close()
+	defer func() {
+		if err := manager.Close(); err != nil {
+			t.Logf("Error closing manager: %v", err)
+		}
+	}()
 
 	// Test with a simple conversion first to check if credentials work
 	testConfig := TTSConfig{
