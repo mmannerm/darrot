@@ -89,11 +89,18 @@ jobs:
     - name: Run go vet
       run: go vet ./...
     
+    - name: Debug golangci-lint config
+      run: |
+        echo "Checking golangci-lint config file:"
+        cat .golangci.yml
+        echo "Running golangci-lint version check:"
+        golangci-lint version || echo "golangci-lint not found in PATH"
+    
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v7
       with:
-        version: v2.5.0
-        args: --timeout=5m --max-issues-per-linter=5 --max-same-issues=3
+        version: latest
+        args: --timeout=5m --max-issues-per-linter=5 --max-same-issues=3 --verbose
 
   build:
     runs-on: ubuntu-latest
