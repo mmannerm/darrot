@@ -71,9 +71,10 @@ func TestNew(t *testing.T) {
 				t.Errorf("New() bot should not be running initially")
 			}
 
-			// Verify test command is registered
-			if bot.commandRouter.GetHandlerCount() != 1 {
-				t.Errorf("New() expected 1 registered handler, got %d", bot.commandRouter.GetHandlerCount())
+			// Verify all commands are registered (test + TTS commands)
+			expectedHandlers := 6 // 1 test + 5 TTS commands
+			if bot.commandRouter.GetHandlerCount() != expectedHandlers {
+				t.Errorf("New() expected %d registered handlers, got %d", expectedHandlers, bot.commandRouter.GetHandlerCount())
 			}
 		})
 	}
@@ -165,7 +166,7 @@ func TestBot_RegisterCommands(t *testing.T) {
 				// Session state will be nil (not connected to Discord)
 			},
 			expectError:    true, // Should fail because session state is not initialized
-			expectLogCount: 1,    // Should still have the test command registered in router
+			expectLogCount: 6,    // Should have all commands registered in router (test + TTS)
 		},
 		{
 			name: "no_commands_to_register",
@@ -242,16 +243,22 @@ func TestBot_RegisterCommands_Integration(t *testing.T) {
 
 	// Verify that the bot has the registerCommands method and it works with the command router
 	commands := bot.commandRouter.GetRegisteredCommands()
-	if len(commands) == 0 {
-		t.Errorf("Expected at least one registered command (test command)")
+	expectedCommands := 6 // test + 5 TTS commands
+	if len(commands) != expectedCommands {
+		t.Errorf("Expected %d registered commands, got %d", expectedCommands, len(commands))
 	}
 
 	// Verify the test command is properly defined
-	if len(commands) > 0 {
-		testCmd := commands[0]
-		if testCmd.Name != "test" {
-			t.Errorf("Expected test command name 'test', got '%s'", testCmd.Name)
+	var testCmd *discordgo.ApplicationCommand
+	for _, cmd := range commands {
+		if cmd.Name == "test" {
+			testCmd = cmd
+			break
 		}
+	}
+	if testCmd == nil {
+		t.Errorf("Expected to find test command in registered commands")
+	} else {
 		if testCmd.Description == "" {
 			t.Errorf("Expected test command to have a description")
 		}

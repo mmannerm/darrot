@@ -211,7 +211,7 @@ func TestTTSIntegrationErrorScenarios(t *testing.T) {
 func TestTTSAudioFormatConversion(t *testing.T) {
 	manager := &GoogleTTSManager{}
 
-	testData := []byte("mock audio data")
+	testData := []byte("mock audio data!") // 16 bytes (even length for 16-bit samples)
 
 	tests := []struct {
 		name    string

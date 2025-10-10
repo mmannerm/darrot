@@ -36,8 +36,8 @@ func TestTestCommandHandler_Definition(t *testing.T) {
 		t.Errorf("Expected command name 'test', got '%s'", definition.Name)
 	}
 
-	if definition.Description != "Test command that responds with Hello World" {
-		t.Errorf("Expected description 'Test command that responds with Hello World', got '%s'", definition.Description)
+	if definition.Description != "Test command that plays airhorn DCA file" {
+		t.Errorf("Expected description 'Test command that plays airhorn DCA file', got '%s'", definition.Description)
 	}
 
 	if definition.Type != discordgo.ChatApplicationCommand {
@@ -126,7 +126,7 @@ func TestTestCommandHandler_Definition_Properties(t *testing.T) {
 		expected interface{}
 	}{
 		{"Name", definition.Name, "test"},
-		{"Description", definition.Description, "Test command that responds with Hello World"},
+		{"Description", definition.Description, "Test command that plays airhorn DCA file"},
 		{"Type", definition.Type, discordgo.ChatApplicationCommand},
 	}
 
