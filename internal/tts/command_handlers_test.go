@@ -13,6 +13,75 @@ import (
 
 // Mock implementations for testing
 
+// MockTTSProcessor implements TTSProcessor for testing
+type MockTTSProcessor struct {
+	started bool
+	guilds  map[string]bool
+}
+
+func (m *MockTTSProcessor) Start() error {
+	m.started = true
+	if m.guilds == nil {
+		m.guilds = make(map[string]bool)
+	}
+	return nil
+}
+
+func (m *MockTTSProcessor) Stop() error {
+	m.started = false
+	return nil
+}
+
+func (m *MockTTSProcessor) StartGuildProcessing(guildID string) error {
+	if m.guilds == nil {
+		m.guilds = make(map[string]bool)
+	}
+	m.guilds[guildID] = true
+	return nil
+}
+
+func (m *MockTTSProcessor) StopGuildProcessing(guildID string) error {
+	if m.guilds != nil {
+		delete(m.guilds, guildID)
+	}
+	return nil
+}
+
+func (m *MockTTSProcessor) GetProcessingStatus(guildID string) (bool, error) {
+	if m.guilds == nil {
+		return false, nil
+	}
+	return m.guilds[guildID], nil
+}
+
+func (m *MockTTSProcessor) GetActiveGuilds() []string {
+	var guilds []string
+	for guildID := range m.guilds {
+		guilds = append(guilds, guildID)
+	}
+	return guilds
+}
+
+func (m *MockTTSProcessor) SkipCurrentMessage(guildID string) error {
+	return nil
+}
+
+func (m *MockTTSProcessor) PauseProcessing(guildID string) error {
+	return nil
+}
+
+func (m *MockTTSProcessor) ResumeProcessing(guildID string) error {
+	return nil
+}
+
+func (m *MockTTSProcessor) ClearQueue(guildID string) error {
+	return nil
+}
+
+func (m *MockTTSProcessor) GetQueueSize(guildID string) int {
+	return 0
+}
+
 type MockVoiceManager struct {
 	mock.Mock
 }
@@ -229,14 +298,22 @@ func createTestJoinHandler() (*JoinCommandHandler, *MockVoiceManager, *MockChann
 	mockChannelService := &MockChannelService{}
 	mockPermissionService := &MockPermissionService{}
 	mockUserService := &MockUserService{}
+	mockTTSProcessor := &MockTTSProcessor{}
 	logger := log.New(os.Stdout, "[TEST] ", log.LstdFlags)
+
+	// Create a simple error recovery manager for testing
+	mockMessageQueue := &MockMessageQueue{}
+	mockConfigService := &MockConfigService{}
+	mockTTSManager := &MockTTSManager{messageQueue: mockMessageQueue}
+	errorRecovery := NewErrorRecoveryManager(mockVoiceManager, mockTTSManager, mockMessageQueue, mockConfigService)
 
 	handler := NewJoinCommandHandler(
 		mockVoiceManager,
 		mockChannelService,
 		mockPermissionService,
 		mockUserService,
-		nil, // errorRecovery - not needed for basic tests
+		mockTTSProcessor,
+		errorRecovery,
 		logger,
 	)
 
@@ -247,13 +324,21 @@ func createTestLeaveHandler() (*LeaveCommandHandler, *MockVoiceManager, *MockCha
 	mockVoiceManager := &MockVoiceManager{}
 	mockChannelService := &MockChannelService{}
 	mockPermissionService := &MockPermissionService{}
+	mockTTSProcessor := &MockTTSProcessor{}
 	logger := log.New(os.Stdout, "[TEST] ", log.LstdFlags)
+
+	// Create a simple error recovery manager for testing
+	mockMessageQueue := &MockMessageQueue{}
+	mockConfigService := &MockConfigService{}
+	mockTTSManager := &MockTTSManager{messageQueue: mockMessageQueue}
+	errorRecovery := NewErrorRecoveryManager(mockVoiceManager, mockTTSManager, mockMessageQueue, mockConfigService)
 
 	handler := NewLeaveCommandHandler(
 		mockVoiceManager,
 		mockChannelService,
 		mockPermissionService,
-		nil, // errorRecovery - not needed for basic tests
+		mockTTSProcessor,
+		errorRecovery,
 		logger,
 	)
 

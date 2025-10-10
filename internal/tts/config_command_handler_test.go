@@ -16,6 +16,34 @@ type MockConfigService struct {
 	mock.Mock
 }
 
+// MockTTSManagerTestify implements TTSManager for testing with testify mock
+type MockTTSManagerTestify struct {
+	mock.Mock
+}
+
+func (m *MockTTSManagerTestify) ConvertToSpeech(text, voice string, config TTSConfig) ([]byte, error) {
+	args := m.Called(text, voice, config)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *MockTTSManagerTestify) ProcessMessageQueue(guildID string) error {
+	args := m.Called(guildID)
+	return args.Error(0)
+}
+
+func (m *MockTTSManagerTestify) SetVoiceConfig(guildID string, config TTSConfig) error {
+	args := m.Called(guildID, config)
+	return args.Error(0)
+}
+
+func (m *MockTTSManagerTestify) GetSupportedVoices() []Voice {
+	args := m.Called()
+	return args.Get(0).([]Voice)
+}
+
 func (m *MockConfigService) GetGuildConfig(guildID string) (*GuildTTSConfig, error) {
 	args := m.Called(guildID)
 	if args.Get(0) == nil {
@@ -69,10 +97,10 @@ func (m *MockConfigService) ValidateConfig(config *GuildTTSConfig) error {
 
 // Test helper functions
 
-func createTestConfigHandler() (*ConfigCommandHandler, *MockConfigService, *MockPermissionService, *MockTTSManager, *MockMessageQueue) {
+func createTestConfigHandler() (*ConfigCommandHandler, *MockConfigService, *MockPermissionService, *MockTTSManagerTestify, *MockMessageQueue) {
 	mockConfigService := &MockConfigService{}
 	mockPermissionService := &MockPermissionService{}
-	mockTTSManager := &MockTTSManager{}
+	mockTTSManager := &MockTTSManagerTestify{}
 	mockMessageQueue := &MockMessageQueue{}
 	logger := log.New(os.Stdout, "test: ", log.LstdFlags)
 

@@ -171,7 +171,14 @@ func TestVoiceManager_PlayAudio_Success(t *testing.T) {
 
 	guildID := "guild123"
 	channelID := "channel456"
-	audioData := []byte("test audio data")
+	// Create valid DCA format test data
+	// DCA format: [2 bytes frame length][N bytes Opus data]
+	opusFrame := []byte("mock opus frame data") // 19 bytes
+	frameLen := len(opusFrame)
+	audioData := make([]byte, 2+frameLen)
+	audioData[0] = byte(frameLen & 0xFF)        // Low byte of frame length
+	audioData[1] = byte((frameLen >> 8) & 0xFF) // High byte of frame length
+	copy(audioData[2:], opusFrame)              // Opus frame data
 
 	// Create mock connection
 	mockConn := createMockVoiceConnection(guildID, channelID)
@@ -189,10 +196,10 @@ func TestVoiceManager_PlayAudio_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	// Verify audio was sent
+	// Verify audio was sent (should receive the Opus frame data, not the full DCA data)
 	select {
 	case receivedData := <-mockConn.OpusSend:
-		assert.Equal(t, audioData, receivedData)
+		assert.Equal(t, opusFrame, receivedData)
 	case <-time.After(1 * time.Second):
 		t.Fatal("Audio data was not sent")
 	}

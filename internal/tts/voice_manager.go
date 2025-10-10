@@ -272,12 +272,10 @@ func (vm *voiceManager) IsConnected(guildID string) bool {
 
 	connection, exists := vm.connections[guildID]
 	if !exists {
-		log.Printf("[DEBUG] No voice connection found for guild %s", guildID)
 		return false
 	}
 
 	isConnected := connection.Connection != nil
-	log.Printf("[DEBUG] Guild %s voice connection exists: %v", guildID, isConnected)
 	return isConnected
 }
 

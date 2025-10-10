@@ -109,6 +109,13 @@ func TestMultiGuildIntegration(t *testing.T) {
 	}
 
 	t.Run("SimultaneousMultiGuildOperations", func(t *testing.T) {
+		// Set up permissions for all users first
+		for i, guildID := range guilds {
+			userID := fmt.Sprintf("user-%d", i)
+			testEnv.permissionService.setCanInviteBot(userID, guildID, true)
+			testEnv.permissionService.setCanControlBot(userID, guildID, true)
+		}
+
 		var wg sync.WaitGroup
 
 		// Start TTS operations in multiple guilds simultaneously
