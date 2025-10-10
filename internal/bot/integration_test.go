@@ -107,7 +107,11 @@ func TestIntegration_CommandRegistrationWithDiscordAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start bot: %v", err)
 	}
-	defer bot.Stop()
+	defer func() {
+		if stopErr := bot.Stop(); stopErr != nil {
+			t.Logf("Error stopping bot: %v", stopErr)
+		}
+	}()
 
 	// Wait a moment for Discord connection to stabilize
 	time.Sleep(2 * time.Second)
@@ -153,7 +157,11 @@ func TestIntegration_TestCommandExecution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start bot: %v", err)
 	}
-	defer bot.Stop()
+	defer func() {
+		if stopErr := bot.Stop(); stopErr != nil {
+			t.Logf("Error stopping bot: %v", stopErr)
+		}
+	}()
 
 	// Wait for Discord connection to stabilize
 	time.Sleep(2 * time.Second)

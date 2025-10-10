@@ -103,6 +103,7 @@ func (vm *voiceManager) leaveChannelInternal(guildID string) error {
 	if connection.Connection != nil {
 		// Note: In a real implementation, we would call connection.Connection.Disconnect()
 		// For testing purposes, we'll skip the actual disconnect call
+		log.Printf("Would disconnect from voice channel for guild %s", guildID)
 		// if err := connection.Connection.Disconnect(); err != nil {
 		//     return fmt.Errorf("failed to disconnect from voice channel: %w", err)
 		// }

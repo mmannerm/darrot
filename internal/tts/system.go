@@ -39,7 +39,7 @@ type TTSSystem struct {
 // NewTTSSystem creates a new TTS system with all components initialized
 func NewTTSSystem(session *discordgo.Session, cfg *config.Config, logger *log.Logger) (*TTSSystem, error) {
 	if session == nil {
-		return nil, fmt.Errorf("Discord session cannot be nil")
+		return nil, fmt.Errorf("discord session cannot be nil")
 	}
 	if cfg == nil {
 		return nil, fmt.Errorf("configuration cannot be nil")

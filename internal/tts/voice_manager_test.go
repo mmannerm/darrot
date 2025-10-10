@@ -666,8 +666,12 @@ func TestVoiceManager_ControlMethods_ConcurrentAccess(t *testing.T) {
 	// Goroutine 1: Pause/Resume operations
 	go func() {
 		for i := 0; i < 50; i++ {
-			vm.PausePlayback(guildID)
-			vm.ResumePlayback(guildID)
+			if err := vm.PausePlayback(guildID); err != nil {
+				t.Logf("PausePlayback error: %v", err)
+			}
+			if err := vm.ResumePlayback(guildID); err != nil {
+				t.Logf("ResumePlayback error: %v", err)
+			}
 		}
 		done <- true
 	}()
@@ -675,7 +679,9 @@ func TestVoiceManager_ControlMethods_ConcurrentAccess(t *testing.T) {
 	// Goroutine 2: Skip operations
 	go func() {
 		for i := 0; i < 50; i++ {
-			vm.SkipCurrentMessage(guildID)
+			if err := vm.SkipCurrentMessage(guildID); err != nil {
+				t.Logf("SkipCurrentMessage error: %v", err)
+			}
 		}
 		done <- true
 	}()

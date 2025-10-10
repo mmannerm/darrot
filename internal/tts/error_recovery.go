@@ -300,7 +300,7 @@ func (erm *ErrorRecoveryManager) HandleTTSFailure(text, voice string, config TTS
 			return audioData, nil
 		}
 
-		lastErr = err
+		lastErr = err // nolint:ineffassign // Used in final return statement
 		log.Printf("TTS retry attempt %d failed for guild %s: %v", attempt, guildID, err)
 
 		// Don't retry fatal errors
@@ -318,7 +318,7 @@ func (erm *ErrorRecoveryManager) HandleTTSFailure(text, voice string, config TTS
 			return audioData, nil
 		}
 		log.Printf("Fallback voice failed for guild %s: %v", guildID, err)
-		lastErr = err
+		lastErr = err // nolint:ineffassign // Used in final return statement
 	}
 
 	// Strategy 3: Try with simplified configuration
@@ -596,7 +596,9 @@ func (cm *ConnectionMonitor) checkConnection(guildID string) {
 
 		// Trigger recovery if too many consecutive errors
 		if state.ConsecutiveErrors >= 3 {
-			go cm.errorRecovery.HandleVoiceDisconnection(guildID)
+			go func() {
+				_ = cm.errorRecovery.HandleVoiceDisconnection(guildID)
+			}()
 		}
 	} else {
 		cm.mu.Lock()

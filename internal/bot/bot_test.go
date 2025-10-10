@@ -2,6 +2,7 @@ package bot
 
 import (
 	"darrot/internal/config"
+	"os"
 	"strings"
 	"testing"
 
@@ -9,6 +10,11 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	tests := []struct {
 		name    string
 		config  *config.Config
@@ -81,6 +87,11 @@ func TestNew(t *testing.T) {
 }
 
 func TestBot_IsRunning(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -104,6 +115,11 @@ func TestBot_IsRunning(t *testing.T) {
 }
 
 func TestBot_Stop_NotRunning(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -122,6 +138,11 @@ func TestBot_Stop_NotRunning(t *testing.T) {
 }
 
 func TestBot_Start_AlreadyRunning(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -143,6 +164,11 @@ func TestBot_Start_AlreadyRunning(t *testing.T) {
 }
 
 func TestBot_RegisterCommands(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -205,6 +231,11 @@ func TestBot_RegisterCommands(t *testing.T) {
 }
 
 func TestBot_RegisterCommands_ErrorHandling(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -224,13 +255,18 @@ func TestBot_RegisterCommands_ErrorHandling(t *testing.T) {
 	}
 
 	// Verify the error message is appropriate
-	expectedErrorMsg := "Discord session not properly initialized"
-	if err != nil && !strings.Contains(err.Error(), expectedErrorMsg) {
+	expectedErrorMsg := "discord session not properly initialized"
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), expectedErrorMsg) {
 		t.Errorf("registerCommands() expected error containing '%s', got: %v", expectedErrorMsg, err)
 	}
 }
 
 func TestBot_RegisterCommands_Integration(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -258,14 +294,17 @@ func TestBot_RegisterCommands_Integration(t *testing.T) {
 	}
 	if testCmd == nil {
 		t.Errorf("Expected to find test command in registered commands")
-	} else {
-		if testCmd.Description == "" {
-			t.Errorf("Expected test command to have a description")
-		}
+	} else if testCmd.Description == "" {
+		t.Errorf("Expected test command to have a description")
 	}
 }
 
 func TestBot_HandleInteraction_NonCommandInteraction(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -298,6 +337,11 @@ func TestBot_HandleInteraction_NonCommandInteraction(t *testing.T) {
 }
 
 func TestBot_HandleInteraction_InteractionTypeCheck(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -337,6 +381,11 @@ func TestBot_HandleInteraction_InteractionTypeCheck(t *testing.T) {
 }
 
 func TestBot_SendErrorResponse_MethodExists(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",
@@ -359,6 +408,11 @@ func TestBot_SendErrorResponse_MethodExists(t *testing.T) {
 }
 
 func TestBot_InteractionEventHandlerSetup(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	config := &config.Config{
 		DiscordToken: "test-token",
 		LogLevel:     "INFO",

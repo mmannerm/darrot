@@ -148,7 +148,7 @@ func (b *Bot) registerCommands() error {
 
 	// Check if session state is available (required for Discord API calls)
 	if b.session.State == nil || b.session.State.User == nil {
-		return fmt.Errorf("Discord session not properly initialized - cannot register commands")
+		return fmt.Errorf("discord session not properly initialized - cannot register commands")
 	}
 
 	for _, command := range commands {

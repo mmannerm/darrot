@@ -254,7 +254,7 @@ func TestConfigurationIntegration(t *testing.T) {
 		assert.NoError(t, err, "Admin should be able to set queue limits")
 
 		// Verify queue limit was applied
-		testEnv.messageQueue.SetMaxSize(guildID, maxQueueSize)
+		_ = testEnv.messageQueue.SetMaxSize(guildID, maxQueueSize)
 		// Test that queue respects the limit by adding messages beyond the limit
 		for i := 0; i < maxQueueSize+5; i++ {
 			message := &QueuedMessage{
@@ -266,7 +266,7 @@ func TestConfigurationIntegration(t *testing.T) {
 				Content:   fmt.Sprintf("Message %d", i),
 				Timestamp: time.Now(),
 			}
-			testEnv.messageQueue.Enqueue(message)
+			_ = testEnv.messageQueue.Enqueue(message)
 		}
 
 		// Queue size should not exceed the limit

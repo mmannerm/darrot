@@ -80,8 +80,15 @@ func (h *TestCommandHandler) playAirhornDCA(s *discordgo.Session, guildID string
 			h.logger.Printf("Found voice connection for guild %s, playing airhorn", guildID)
 
 			// Set speaking state
-			vs.Speaking(true)
-			defer vs.Speaking(false)
+			if err := vs.Speaking(true); err != nil {
+				h.logger.Printf("Failed to set speaking state: %v", err)
+				return
+			}
+			defer func() {
+				if err := vs.Speaking(false); err != nil {
+					h.logger.Printf("Failed to unset speaking state: %v", err)
+				}
+			}()
 
 			// Parse DCA frames and send them
 			frames, err := h.parseDCAFrames(dcaData)

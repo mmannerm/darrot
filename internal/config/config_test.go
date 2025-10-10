@@ -95,7 +95,9 @@ func TestLoad(t *testing.T) {
 
 			// Set test environment variables
 			for key, value := range tt.envVars {
-				os.Setenv(key, value)
+				if err := os.Setenv(key, value); err != nil {
+					t.Fatalf("Failed to set env var %s: %v", key, err)
+				}
 			}
 
 			config, err := Load()
@@ -332,10 +334,14 @@ func TestGetEnvWithDefault(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear the environment variable
-			os.Unsetenv(tt.key)
+			if err := os.Unsetenv(tt.key); err != nil {
+				t.Fatalf("Failed to unset env var %s: %v", tt.key, err)
+			}
 
 			if tt.setEnv {
-				os.Setenv(tt.key, tt.envValue)
+				if err := os.Setenv(tt.key, tt.envValue); err != nil {
+					t.Fatalf("Failed to set env var %s: %v", tt.key, err)
+				}
 			}
 
 			result := getEnvWithDefault(tt.key, tt.defaultValue)
@@ -345,7 +351,9 @@ func TestGetEnvWithDefault(t *testing.T) {
 			}
 
 			// Clean up
-			os.Unsetenv(tt.key)
+			if err := os.Unsetenv(tt.key); err != nil {
+				t.Logf("Failed to clean up env var %s: %v", tt.key, err)
+			}
 		})
 	}
 }

@@ -74,7 +74,10 @@ func TestTestCommandHandler_Handle_NilSession(t *testing.T) {
 		}
 	}()
 
-	handler.Handle(nil, interaction)
+	err := handler.Handle(nil, interaction)
+	if err != nil {
+		t.Logf("Handle returned error: %v", err)
+	}
 }
 
 func TestTestCommandHandler_ImplementsInterface(t *testing.T) {
@@ -110,7 +113,10 @@ func TestTestCommandHandler_ImplementsInterface(t *testing.T) {
 		User: &discordgo.User{Username: "testuser"},
 	}
 
-	handler.Handle(nil, interaction)
+	err := handler.Handle(nil, interaction)
+	if err != nil {
+		t.Logf("Handle returned error: %v", err)
+	}
 }
 
 func TestTestCommandHandler_Definition_Properties(t *testing.T) {

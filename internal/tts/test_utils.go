@@ -47,7 +47,7 @@ func setupIntegrationTestEnvironment(t *testing.T) *integrationTestEnvironment {
 	env.cleanup = func() {
 		// Clean up any resources
 		for guildID := range env.voiceManager.connections {
-			env.voiceManager.LeaveChannel(guildID)
+			_ = env.voiceManager.LeaveChannel(guildID)
 		}
 	}
 
@@ -118,7 +118,7 @@ func setupErrorTestEnvironment(t *testing.T) *errorTestEnvironment {
 	env.cleanup = func() {
 		// Clean up any resources
 		for guildID := range voiceManager.connections {
-			voiceManager.LeaveChannel(guildID)
+			_ = voiceManager.LeaveChannel(guildID)
 		}
 	}
 
@@ -157,7 +157,7 @@ func setupEndToEndTestEnvironment(t *testing.T) *endToEndTestEnvironment {
 	env.cleanup = func() {
 		// Clean up any resources
 		if vm, ok := env.voiceManager.(*mockVoiceManagerIntegration); ok {
-			vm.Cleanup()
+			_ = vm.Cleanup()
 		}
 	}
 

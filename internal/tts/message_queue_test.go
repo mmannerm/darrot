@@ -13,7 +13,7 @@ func TestNewMessageQueue(t *testing.T) {
 	}
 
 	// Verify it implements the interface
-	var _ MessageQueue = mq
+	var _ MessageQueue = (*MessageQueueImpl)(nil)
 }
 
 func TestMessageQueue_Enqueue(t *testing.T) {

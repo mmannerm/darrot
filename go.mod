@@ -1,6 +1,6 @@
 module darrot
 
-go 1.25.1
+go 1.23.0
 
 require (
 	cloud.google.com/go/texttospeech v1.14.0

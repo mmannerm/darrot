@@ -111,7 +111,7 @@ func (g *GoogleTTSManager) ConvertToSpeech(text, voice string, config TTSConfig)
 		AudioConfig: &texttospeechpb.AudioConfig{
 			AudioEncoding:   texttospeechpb.AudioEncoding_LINEAR16,
 			SpeakingRate:    float64(speed),
-			VolumeGainDb:    volumeToDb(volume),
+			VolumeGainDb:    volumeToDB(volume),
 			SampleRateHertz: 24000, // Use 24kHz (widely supported) then resample to 48kHz
 		},
 	}
@@ -592,7 +592,8 @@ func (g *GoogleTTSManager) estimateOpusFrameSize(data []byte) int {
 	// This is a simplified approach - in practice, proper Opus parsing would be better
 	for i := defaultFrameSize; i < len(data) && i < maxFrameSize; i++ {
 		// Look for potential TOC byte patterns (simplified heuristic)
-		if data[i] >= 0x00 && data[i] <= 0xFF {
+		// All bytes are valid (0x00-0xFF by definition)
+		if true {
 			// This could be a frame boundary, but it's just a heuristic
 			if i > defaultFrameSize/2 { // Ensure reasonable frame size
 				return i
@@ -624,7 +625,7 @@ func parseVoiceID(voiceID string) (languageCode, voiceName string) {
 }
 
 // volumeToDb converts linear volume (0.0-2.0) to decibels
-func volumeToDb(volume float32) float64 {
+func volumeToDB(volume float32) float64 {
 	if volume <= 0 {
 		return -96.0 // Minimum volume
 	}

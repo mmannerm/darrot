@@ -184,7 +184,7 @@ func (h *JoinCommandHandler) Handle(s *discordgo.Session, i *discordgo.Interacti
 	// Create channel pairing (this will now work since we cleaned up any stale pairings)
 	if err := h.channelService.CreatePairingWithCreator(guildID, voiceChannelID, textChannelID, userID); err != nil {
 		// If pairing creation fails, leave the voice channel
-		h.voiceManager.LeaveChannel(guildID)
+		_ = h.voiceManager.LeaveChannel(guildID)
 		return h.respondError(s, i, fmt.Sprintf("Failed to create channel pairing: %v", err))
 	}
 
@@ -957,7 +957,8 @@ func (h *ConfigCommandHandler) handleRoleAction(s *discordgo.Session, i *discord
 				return h.respondError(s, i, "Role is already in the required roles list.")
 			}
 		}
-		newRoles = append(currentRoles, roleID)
+		currentRoles = append(currentRoles, roleID)
+		newRoles = currentRoles
 		actionMessage = "Role added to required roles:"
 	case "remove":
 		// Remove role from list
@@ -1240,14 +1241,14 @@ func (h *ConfigCommandHandler) handleShowConfig(s *discordgo.Session, i *discord
 	}
 
 	// TTS settings
-	responseMessage += fmt.Sprintf("\n**Voice Settings:**\n")
+	responseMessage += "\n**Voice Settings:**\n"
 	responseMessage += fmt.Sprintf("• Voice: %s\n", config.TTSSettings.Voice)
 	responseMessage += fmt.Sprintf("• Speed: %.2f\n", config.TTSSettings.Speed)
 	responseMessage += fmt.Sprintf("• Volume: %.2f\n", config.TTSSettings.Volume)
 
 	// Queue settings
 	currentQueueSize := h.messageQueue.Size(guildID)
-	responseMessage += fmt.Sprintf("\n**Queue Settings:**\n")
+	responseMessage += "\n**Queue Settings:**\n"
 	responseMessage += fmt.Sprintf("• Max Size: %d\n", config.MaxQueueSize)
 	responseMessage += fmt.Sprintf("• Current Size: %d\n", currentQueueSize)
 
@@ -1307,6 +1308,6 @@ func parseFloat32(s string) (float32, error) {
 		return 0, fmt.Errorf("invalid float value")
 	}
 	var result float32
-	fmt.Sscanf(s, "%f", &result)
+	_, _ = fmt.Sscanf(s, "%f", &result)
 	return result, nil
 }
