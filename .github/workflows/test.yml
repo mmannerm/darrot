@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopus-dev pkg-config
+        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
     
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -74,7 +74,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopus-dev pkg-config
+        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
     
     - name: Run go fmt
       run: |
@@ -107,7 +107,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopus-dev pkg-config
+        sudo apt-get install -y libopus-dev libopusfile-dev pkg-config
     
     - name: Build application
       run: go build -v -o darrot ./cmd/darrot
