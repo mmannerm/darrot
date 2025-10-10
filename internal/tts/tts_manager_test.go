@@ -1,6 +1,7 @@
 package tts
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -9,6 +10,11 @@ import (
 )
 
 func TestNewGoogleTTSManager(t *testing.T) {
+	// Skip integration tests when Google Cloud credentials are not available
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Skipping integration test - SKIP_INTEGRATION_TESTS is set")
+	}
+
 	tests := []struct {
 		name    string
 		wantErr bool
@@ -32,7 +38,7 @@ func TestNewGoogleTTSManager(t *testing.T) {
 				assert.Nil(t, manager)
 			} else {
 				// Skip this test if we don't have credentials
-				if err != nil && err.Error() == "failed to create TTS client: google: could not find default credentials. See https://cloud.google.com/docs/authentication/external/set-up-adc for more information" {
+				if err != nil && strings.Contains(err.Error(), "could not find default credentials") {
 					t.Skip("Skipping test - no Google Cloud credentials available")
 				}
 
