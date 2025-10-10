@@ -72,6 +72,17 @@ All tests now pass consistently:
 - `internal/tts/tts_processor_test.go` - Fixed race conditions, optimized timing
 - `internal/tts/end_to_end_test.go` - Reduced sleep times
 - `internal/tts/tts_manager_test.go` - Fixed integration test credential handling
+- `internal/tts/voice_manager_test.go` - Fixed DCA format validation
+- `internal/tts/command_handlers_test.go` - Added missing mock implementations
+- `internal/tts/config_command_handler_test.go` - Updated testify mocks
+- `internal/tts/comprehensive_integration_test.go` - Integration test fixes
+- `internal/tts/error_scenario_test.go` - Scenario test updates
+- `internal/tts/tts_integration_test.go` - Integration improvements
+- `internal/tts/voice_manager.go` - DCA parsing fixes
+- `internal/tts/config.go` - Changed default format to Opus
+- `internal/bot/bot_test.go` - Updated command count expectations
+- `internal/bot/test_command_test.go` - Fixed description expectations
+- Removed `internal/tts/tts_manager_mock_test.go` - Obsolete mock file
 
 ## Testing
 - All existing tests pass with improved performance
