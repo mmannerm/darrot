@@ -43,7 +43,7 @@ func (s *StorageService) SaveGuildConfig(config GuildTTSConfig) error {
 		return fmt.Errorf("failed to marshal guild config: %w", err)
 	}
 
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write guild config file: %w", err)
 	}
 
@@ -93,7 +93,7 @@ func (s *StorageService) SaveUserPreferences(prefs UserTTSPreferences) error {
 		return fmt.Errorf("failed to marshal user preferences: %w", err)
 	}
 
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write user preferences file: %w", err)
 	}
 
@@ -141,7 +141,7 @@ func (s *StorageService) SaveChannelPairing(pairing ChannelPairingStorage) error
 		return fmt.Errorf("failed to marshal channel pairing: %w", err)
 	}
 
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write channel pairing file: %w", err)
 	}
 

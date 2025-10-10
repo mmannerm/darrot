@@ -418,7 +418,7 @@ func TestParseVoiceID(t *testing.T) {
 	}
 }
 
-func TestVolumeToDb(t *testing.T) {
+func TestVolumeToDB(t *testing.T) {
 	tests := []struct {
 		name     string
 		volume   float32
@@ -453,7 +453,7 @@ func TestVolumeToDb(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := volumeToDb(tt.volume)
+			result := volumeToDB(tt.volume)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

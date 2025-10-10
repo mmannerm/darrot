@@ -596,7 +596,9 @@ func (cm *ConnectionMonitor) checkConnection(guildID string) {
 
 		// Trigger recovery if too many consecutive errors
 		if state.ConsecutiveErrors >= 3 {
-			go cm.errorRecovery.HandleVoiceDisconnection(guildID)
+			go func() {
+				_ = cm.errorRecovery.HandleVoiceDisconnection(guildID)
+			}()
 		}
 	} else {
 		cm.mu.Lock()
