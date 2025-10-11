@@ -15,54 +15,137 @@ permissions:
   repository-projects: write
 
 jobs:
-  semantic-release:
+  create-release:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     outputs:
-      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
-      new_release_version: ${{ steps.semantic.outputs.new_release_version }}
-      new_release_git_tag: ${{ steps.semantic.outputs.new_release_git_tag }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Analyze commits and determine version
+      id: version
+      run: |
+        # Get the latest tag, or use 0.0.0 if no tags exist
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+        echo "Latest tag: $LATEST_TAG"
+        
+        # Remove 'v' prefix for version comparison
+        CURRENT_VERSION=${LATEST_TAG#v}
+        echo "Current version: $CURRENT_VERSION"
+        
+        # Get commits since last tag
+        if [ "$LATEST_TAG" = "v0.0.0" ]; then
+          COMMITS=$(git log --pretty=format:"%s" --no-merges)
+        else
+          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --no-merges)
+        fi
+        
+        echo "Commits since last release:"
+        echo "$COMMITS"
+        
+        # Analyze commits for version bump
+        MAJOR_BUMP=false
+        MINOR_BUMP=false
+        PATCH_BUMP=false
+        
+        while IFS= read -r commit; do
+          if [[ $commit =~ ^feat(\(.+\))?!: ]] || [[ $commit =~ BREAKING[[:space:]]CHANGE ]]; then
+            MAJOR_BUMP=true
+          elif [[ $commit =~ ^feat(\(.+\))?: ]]; then
+            MINOR_BUMP=true
+          elif [[ $commit =~ ^fix(\(.+\))?: ]] || [[ $commit =~ ^perf(\(.+\))?: ]]; then
+            PATCH_BUMP=true
+          fi
+        done <<< "$COMMITS"
+        
+        # Calculate new version
+        IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+        
+        if [ "$MAJOR_BUMP" = true ]; then
+          major=$((major + 1))
+          minor=0
+          patch=0
+        elif [ "$MINOR_BUMP" = true ]; then
+          minor=$((minor + 1))
+          patch=0
+        elif [ "$PATCH_BUMP" = true ]; then
+          patch=$((patch + 1))
+        else
+          echo "No version bump needed"
+          echo "release_created=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        NEW_VERSION="$major.$minor.$patch"
+        NEW_TAG="v$NEW_VERSION"
+        
+        echo "New version: $NEW_VERSION"
+        echo "New tag: $NEW_TAG"
+        
+        echo "release_created=true" >> $GITHUB_OUTPUT
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "tag_name=$NEW_TAG" >> $GITHUB_OUTPUT
+    
+    - name: Generate changelog
+      id: changelog
+      if: steps.version.outputs.release_created == 'true'
+      run: |
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        NEW_TAG="${{ steps.version.outputs.tag_name }}"
+        
+        echo "# Release $NEW_TAG" > changelog.md
+        echo "" >> changelog.md
+        
+        if [ -n "$LATEST_TAG" ]; then
+          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --no-merges)
+        else
+          COMMITS=$(git log --pretty=format:"%s" --no-merges)
+        fi
+        
+        # Group commits by type
+        echo "## Features" >> changelog.md
+        echo "$COMMITS" | grep "^feat" | sed 's/^feat[^:]*: /- /' >> changelog.md || echo "- No new features" >> changelog.md
+        echo "" >> changelog.md
+        
+        echo "## Bug Fixes" >> changelog.md
+        echo "$COMMITS" | grep "^fix" | sed 's/^fix[^:]*: /- /' >> changelog.md || echo "- No bug fixes" >> changelog.md
+        echo "" >> changelog.md
+        
+        echo "## Performance Improvements" >> changelog.md
+        echo "$COMMITS" | grep "^perf" | sed 's/^perf[^:]*: /- /' >> changelog.md || echo "- No performance improvements" >> changelog.md
+        echo "" >> changelog.md
+        
+        echo "## Other Changes" >> changelog.md
+        echo "$COMMITS" | grep -E "^(docs|ci|chore|refactor|test|build)" | sed 's/^[^:]*: /- /' >> changelog.md || echo "- No other changes" >> changelog.md
+        
+        # Set output for release body
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat changelog.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create GitHub Release
+      id: release
+      if: steps.version.outputs.release_created == 'true'
+      uses: softprops/action-gh-release@v2
       with:
-        node-version: '20'
-    
-    - name: Install semantic-release
-      run: |
-        npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
-    
-    - name: Create semantic-release config
-      run: |
-        cat > .releaserc.json << 'EOF'
-        {
-          "branches": ["main"],
-          "plugins": [
-            "@semantic-release/commit-analyzer",
-            "@semantic-release/release-notes-generator",
-            "@semantic-release/changelog",
-            "@semantic-release/github",
-            "@semantic-release/git"
-          ]
-        }
-        EOF
-    
-    - name: Run semantic-release
-      id: semantic
-      run: npx semantic-release
+        tag_name: ${{ steps.version.outputs.tag_name }}
+        name: Release ${{ steps.version.outputs.tag_name }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-upload:
     runs-on: ubuntu-latest
-    needs: semantic-release
-    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
+    needs: create-release
+    if: ${{ needs.create-release.outputs.release_created == 'true' }}
     
     steps:
     - uses: actions/checkout@v4
@@ -75,14 +158,14 @@ jobs:
     - name: Build Linux AMD64
       run: |
         CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-          -ldflags="-s -w -X main.version=${{ needs.semantic-release.outputs.new_release_version }}" \
+          -ldflags="-s -w -X main.version=${{ needs.create-release.outputs.version }}" \
           -o darrot-linux-amd64 ./cmd/darrot
     
     - name: Build Linux ARM64
       run: |
         sudo apt-get install -y gcc-aarch64-linux-gnu
         CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc go build \
-          -ldflags="-s -w -X main.version=${{ needs.semantic-release.outputs.new_release_version }}" \
+          -ldflags="-s -w -X main.version=${{ needs.create-release.outputs.version }}" \
           -o darrot-linux-arm64 ./cmd/darrot
     
     - name: Create checksums
@@ -94,7 +177,7 @@ jobs:
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ needs.semantic-release.outputs.new_release_git_tag }}
+        tag_name: ${{ needs.create-release.outputs.tag_name }}
         files: |
           darrot-linux-amd64
           darrot-linux-arm64
