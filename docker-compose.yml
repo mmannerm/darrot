@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  darrot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: darrot-tts-bot
+    restart: unless-stopped
+    
+    # Environment variables
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TTS_DEFAULT_VOICE=${TTS_DEFAULT_VOICE:-en-US-Standard-A}
+      - TTS_DEFAULT_SPEED=${TTS_DEFAULT_SPEED:-1.0}
+      - TTS_DEFAULT_VOLUME=${TTS_DEFAULT_VOLUME:-1.0}
+      - TTS_MAX_QUEUE_SIZE=${TTS_MAX_QUEUE_SIZE:-10}
+      - TTS_MAX_MESSAGE_LENGTH=${TTS_MAX_MESSAGE_LENGTH:-500}
+    
+    # Required secrets (must be provided)
+    env_file:
+      - .env
+    
+    # Persistent data storage
+    volumes:
+      - ./data:/app/data:Z
+      - ./credentials:/app/credentials:ro,Z
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "darrot"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,47 @@
+# Git and version control
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment and configuration
+.env
+.env.local
+.env.test
+
+# Build artifacts
+darrot
+darrot.exe
+darrot-*.exe
+*.out
+coverage.html
+coverage.out
+
+# Test data and temporary files
+data/
+test_*.dca
+*.tmp
+
+# CI/CD and automation
+.github/
+.kiro/
+scripts/
+
+# Dependencies (will be downloaded in container)
+vendor/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
