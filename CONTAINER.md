@@ -339,6 +339,46 @@ podman tag darrot:latest your-registry.com/darrot:latest
 podman push your-registry.com/darrot:latest
 ```
 
+## Testing
+
+### Container Acceptance Tests
+
+The acceptance tests automatically detect and use your existing `.env` file if available, or create a minimal test configuration. They also support Google Cloud credentials from your host environment.
+
+```bash
+# Test container build and functionality
+./test-container.sh
+
+# Windows
+test-container.bat
+
+# Manual Podman test
+bash tests/container/acceptance_test.sh
+
+# Test with your actual credentials (optional)
+export GOOGLE_CLOUD_CREDENTIALS_PATH=/path/to/your/credentials.json
+bash tests/container/acceptance_test.sh
+```
+
+**Test Features:**
+- Uses existing `.env` file from project root if available
+- Falls back to minimal test configuration if no `.env` found
+- Automatically mounts Google Cloud credentials from host environment
+- Validates both missing and present credential scenarios
+- Tests environment variable handling and defaults
+- Verifies container security settings and dependencies
+
+**Test Scenarios:**
+1. Container build with Opus dependencies
+2. Image properties and security configuration
+3. Application startup with various credential scenarios
+4. Binary functionality and version checking
+5. Filesystem permissions and user context
+6. Environment variable loading and defaults
+7. Health check functionality
+8. Resource limits compliance
+9. Volume mount operations
+
 ## Support
 
 For issues related to:

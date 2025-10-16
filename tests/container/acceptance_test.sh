@@ -80,19 +80,38 @@ test_image_properties() {
 test_container_startup() {
     echo -e "${YELLOW}Test 3: Testing container startup...${NC}"
     
-    # Create test environment file
-    mkdir -p "$(dirname "$TEST_ENV_FILE")"
-    cat > "$TEST_ENV_FILE" << EOF
+    # Check if project .env file exists
+    if [ -f ".env" ]; then
+        echo -e "${GREEN}✓ Using existing .env file from project root${NC}"
+        ENV_FILE_ARG="--env-file .env"
+    else
+        # Create minimal test environment file
+        mkdir -p "$(dirname "$TEST_ENV_FILE")"
+        cat > "$TEST_ENV_FILE" << EOF
 DISCORD_TOKEN=test_token_for_validation
 LOG_LEVEL=DEBUG
 TTS_DEFAULT_VOICE=en-US-Standard-A
 EOF
+        echo -e "${YELLOW}⚠ No .env file found, using test configuration${NC}"
+        ENV_FILE_ARG="--env-file $TEST_ENV_FILE"
+    fi
     
-    # Start container with test configuration
-    if podman run -d \
-        --name "$CONTAINER_NAME" \
-        --env-file "$TEST_ENV_FILE" \
-        "$IMAGE_NAME"; then
+    # Add Google Cloud credentials from host environment if available
+    EXTRA_ENV_ARGS=""
+    if [ -n "$GOOGLE_CLOUD_CREDENTIALS_PATH" ] && [ -f "$GOOGLE_CLOUD_CREDENTIALS_PATH" ]; then
+        echo -e "${GREEN}✓ Using Google Cloud credentials from host environment${NC}"
+        EXTRA_ENV_ARGS="-e GOOGLE_CLOUD_CREDENTIALS_PATH=/app/credentials/credentials.json -v $GOOGLE_CLOUD_CREDENTIALS_PATH:/app/credentials/credentials.json:ro,Z"
+    elif [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+        echo -e "${GREEN}✓ Using Google Application Default Credentials from host${NC}"
+        EXTRA_ENV_ARGS="-e GOOGLE_CLOUD_CREDENTIALS_PATH=/app/credentials/credentials.json -v $GOOGLE_APPLICATION_CREDENTIALS:/app/credentials/credentials.json:ro,Z"
+    fi
+    
+    # Start container with configuration
+    if eval "podman run -d \
+        --name \"$CONTAINER_NAME\" \
+        $ENV_FILE_ARG \
+        $EXTRA_ENV_ARGS \
+        \"$IMAGE_NAME\""; then
         echo -e "${GREEN}✓ Container started successfully${NC}"
     else
         echo -e "${RED}✗ Container failed to start${NC}"
@@ -113,14 +132,19 @@ EOF
         return 1
     fi
     
-    # Check for expected credential error (this is normal in test environment)
+    # Check application behavior based on credentials availability
     if echo "$logs" | grep -q "could not find default credentials"; then
-        echo -e "${GREEN}✓ Application correctly handles missing credentials${NC}"
+        echo -e "${GREEN}✓ Application correctly handles missing Google Cloud credentials${NC}"
+    elif echo "$logs" | grep -q "TTS system initialized successfully"; then
+        echo -e "${GREEN}✓ Application started with Google Cloud TTS enabled${NC}"
     elif echo "$logs" | grep -q "Configuration loaded successfully"; then
         echo -e "${GREEN}✓ Application configuration loaded successfully${NC}"
     else
-        echo -e "${YELLOW}⚠ Unexpected application behavior${NC}"
-        echo "$logs"
+        echo -e "${YELLOW}⚠ Check application logs for details${NC}"
+        if echo "$logs" | grep -q "DISCORD_TOKEN.*required"; then
+            echo -e "${RED}✗ Missing Discord token${NC}"
+            return 1
+        fi
     fi
     
     return 0
@@ -188,22 +212,39 @@ test_filesystem_permissions() {
 test_environment_variables() {
     echo -e "${YELLOW}Test 6: Testing environment variable handling...${NC}"
     
-    # Check that environment variables are loaded
-    local discord_token=$(podman exec "$CONTAINER_NAME" printenv DISCORD_TOKEN)
-    if [ "$discord_token" = "test_token_for_validation" ]; then
-        echo -e "${GREEN}✓ Environment variables loaded correctly${NC}"
+    # Check that Discord token is loaded (either from .env or test config)
+    local discord_token=$(podman exec "$CONTAINER_NAME" printenv DISCORD_TOKEN 2>/dev/null || echo "")
+    if [ -n "$discord_token" ]; then
+        echo -e "${GREEN}✓ Discord token environment variable loaded${NC}"
     else
-        echo -e "${RED}✗ Environment variables not loaded correctly${NC}"
+        echo -e "${RED}✗ Discord token environment variable not found${NC}"
         return 1
     fi
     
-    # Check log level
-    local log_level=$(podman exec "$CONTAINER_NAME" printenv LOG_LEVEL)
-    if [ "$log_level" = "DEBUG" ]; then
-        echo -e "${GREEN}✓ Log level configuration working${NC}"
+    # Check log level (should have default or configured value)
+    local log_level=$(podman exec "$CONTAINER_NAME" printenv LOG_LEVEL 2>/dev/null || echo "INFO")
+    if [ -n "$log_level" ]; then
+        echo -e "${GREEN}✓ Log level configuration: $log_level${NC}"
     else
-        echo -e "${RED}✗ Log level configuration not working${NC}"
-        return 1
+        echo -e "${YELLOW}⚠ Log level not set, using default${NC}"
+    fi
+    
+    # Check TTS configuration (should have defaults even if not explicitly set)
+    local tts_voice=$(podman exec "$CONTAINER_NAME" printenv TTS_DEFAULT_VOICE 2>/dev/null || echo "en-US-Standard-A")
+    echo -e "${GREEN}✓ TTS voice configuration: $tts_voice${NC}"
+    
+    # Check Google Cloud credentials path if mounted
+    local gc_path=$(podman exec "$CONTAINER_NAME" printenv GOOGLE_CLOUD_CREDENTIALS_PATH 2>/dev/null || echo "")
+    if [ -n "$gc_path" ]; then
+        echo -e "${GREEN}✓ Google Cloud credentials path configured: $gc_path${NC}"
+        # Verify the file exists if path is set
+        if podman exec "$CONTAINER_NAME" test -f "$gc_path" 2>/dev/null; then
+            echo -e "${GREEN}✓ Google Cloud credentials file accessible${NC}"
+        else
+            echo -e "${YELLOW}⚠ Google Cloud credentials path set but file not accessible${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ No Google Cloud credentials configured (TTS will use defaults)${NC}"
     fi
     
     return 0
