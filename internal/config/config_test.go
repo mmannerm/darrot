@@ -9,13 +9,13 @@ func TestDRTEnvironmentVariableBinding(t *testing.T) {
 	// Test that DRT-prefixed environment variables are properly bound
 
 	// Set test environment variables
-	os.Setenv("DRT_DISCORD_TOKEN", "test-token")
-	os.Setenv("DRT_LOG_LEVEL", "DEBUG")
-	os.Setenv("DRT_TTS_DEFAULT_SPEED", "1.5")
+	_ = os.Setenv("DRT_DISCORD_TOKEN", "test-token")
+	_ = os.Setenv("DRT_LOG_LEVEL", "DEBUG")
+	_ = os.Setenv("DRT_TTS_DEFAULT_SPEED", "1.5")
 	defer func() {
-		os.Unsetenv("DRT_DISCORD_TOKEN")
-		os.Unsetenv("DRT_LOG_LEVEL")
-		os.Unsetenv("DRT_TTS_DEFAULT_SPEED")
+		_ = os.Unsetenv("DRT_DISCORD_TOKEN")
+		_ = os.Unsetenv("DRT_LOG_LEVEL")
+		_ = os.Unsetenv("DRT_TTS_DEFAULT_SPEED")
 	}()
 
 	// Create config manager and test Viper directly
@@ -104,11 +104,11 @@ func TestConfigurationPrecedence(t *testing.T) {
 	// Test that CLI flags > environment variables > config file > defaults precedence works
 
 	// Set required environment variables
-	os.Setenv("DRT_DISCORD_TOKEN", "test-token")
-	os.Setenv("DRT_LOG_LEVEL", "WARN")
+	_ = os.Setenv("DRT_DISCORD_TOKEN", "test-token")
+	_ = os.Setenv("DRT_LOG_LEVEL", "WARN")
 	defer func() {
-		os.Unsetenv("DRT_DISCORD_TOKEN")
-		os.Unsetenv("DRT_LOG_LEVEL")
+		_ = os.Unsetenv("DRT_DISCORD_TOKEN")
+		_ = os.Unsetenv("DRT_LOG_LEVEL")
 	}()
 
 	cm := NewConfigManager()

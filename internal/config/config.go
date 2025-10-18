@@ -57,8 +57,8 @@ func NewConfigManager() *ConfigManager {
 
 	// Register sensitive keys for environment variable binding without setting defaults
 	// This tells Viper to look for these environment variables during AutomaticEnv
-	v.BindEnv("discord_token")
-	v.BindEnv("tts.google_cloud_credentials_path")
+	_ = v.BindEnv("discord_token")
+	_ = v.BindEnv("tts.google_cloud_credentials_path")
 
 	return &ConfigManager{viper: v}
 }
