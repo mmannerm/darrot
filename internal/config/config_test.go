@@ -5,355 +5,134 @@ import (
 	"testing"
 )
 
-func TestLoad(t *testing.T) {
-	tests := []struct {
-		name        string
-		envVars     map[string]string
-		wantErr     bool
-		expectedCfg *Config
-	}{
-		{
-			name: "valid_configuration_with_defaults",
-			envVars: map[string]string{
-				"DISCORD_TOKEN": "test-token-123",
-			},
-			wantErr: false,
-			expectedCfg: &Config{
-				DiscordToken: "test-token-123",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					GoogleCloudCredentialsPath: "",
-					DefaultVoice:               "en-US-Standard-A",
-					DefaultSpeed:               1.0,
-					DefaultVolume:              1.0,
-					MaxQueueSize:               10,
-					MaxMessageLength:           500,
-				},
-			},
-		},
-		{
-			name: "valid_configuration_with_custom_log_level",
-			envVars: map[string]string{
-				"DISCORD_TOKEN": "test-token-456",
-				"LOG_LEVEL":     "debug",
-			},
-			wantErr: false,
-			expectedCfg: &Config{
-				DiscordToken: "test-token-456",
-				LogLevel:     "DEBUG",
-				TTS: TTSConfig{
-					GoogleCloudCredentialsPath: "",
-					DefaultVoice:               "en-US-Standard-A",
-					DefaultSpeed:               1.0,
-					DefaultVolume:              1.0,
-					MaxQueueSize:               10,
-					MaxMessageLength:           500,
-				},
-			},
-		},
-		{
-			name: "missing_discord_token",
-			envVars: map[string]string{
-				"LOG_LEVEL": "INFO",
-			},
-			wantErr:     true,
-			expectedCfg: nil,
-		},
-		{
-			name: "empty_discord_token",
-			envVars: map[string]string{
-				"DISCORD_TOKEN": "",
-				"LOG_LEVEL":     "INFO",
-			},
-			wantErr:     true,
-			expectedCfg: nil,
-		},
-		{
-			name: "whitespace_only_discord_token",
-			envVars: map[string]string{
-				"DISCORD_TOKEN": "   ",
-				"LOG_LEVEL":     "INFO",
-			},
-			wantErr:     true,
-			expectedCfg: nil,
-		},
-		{
-			name: "invalid_log_level",
-			envVars: map[string]string{
-				"DISCORD_TOKEN": "test-token-789",
-				"LOG_LEVEL":     "INVALID",
-			},
-			wantErr:     true,
-			expectedCfg: nil,
-		},
+func TestDRTEnvironmentVariableBinding(t *testing.T) {
+	// Test that DRT-prefixed environment variables are properly bound
+
+	// Set test environment variables
+	_ = os.Setenv("DRT_DISCORD_TOKEN", "test-token")
+	_ = os.Setenv("DRT_LOG_LEVEL", "DEBUG")
+	_ = os.Setenv("DRT_TTS_DEFAULT_SPEED", "1.5")
+	defer func() {
+		_ = os.Unsetenv("DRT_DISCORD_TOKEN")
+		_ = os.Unsetenv("DRT_LOG_LEVEL")
+		_ = os.Unsetenv("DRT_TTS_DEFAULT_SPEED")
+	}()
+
+	// Create config manager and test Viper directly
+	cm := NewConfigManager()
+
+	// Set defaults first (this is important for AutomaticEnv to work properly)
+	cm.SetDefaults()
+
+	// Debug: Check if Viper can read the environment variables
+	viper := cm.GetViper()
+	t.Logf("Viper discord_token: %s (IsSet: %t)", viper.GetString("discord_token"), viper.IsSet("discord_token"))
+	t.Logf("Viper log_level: %s (IsSet: %t)", viper.GetString("log_level"), viper.IsSet("log_level"))
+	t.Logf("Viper tts.default_speed: %f (IsSet: %t)", viper.GetFloat64("tts.default_speed"), viper.IsSet("tts.default_speed"))
+
+	// Try to unmarshal directly
+	var testConfig Config
+	if err := viper.Unmarshal(&testConfig); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+	t.Logf("Unmarshaled discord_token: %s", testConfig.DiscordToken)
+	t.Logf("Unmarshaled log_level: %s", testConfig.LogLevel)
+	t.Logf("Unmarshaled tts.default_speed: %f", testConfig.TTS.DefaultSpeed)
+
+	config, err := cm.LoadConfig()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Clear environment variables
-			os.Clearenv()
+	// Verify environment variables are properly bound
+	if config.DiscordToken != "test-token" {
+		t.Errorf("Expected discord_token to be 'test-token', got '%s'", config.DiscordToken)
+	}
 
-			// Set test environment variables
-			for key, value := range tt.envVars {
-				if err := os.Setenv(key, value); err != nil {
-					t.Fatalf("Failed to set env var %s: %v", key, err)
-				}
-			}
+	if config.LogLevel != "DEBUG" {
+		t.Errorf("Expected log_level to be 'DEBUG', got '%s'", config.LogLevel)
+	}
 
-			config, err := Load()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Load() expected error, got nil")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("Load() unexpected error: %v", err)
-				return
-			}
-
-			if config.DiscordToken != tt.expectedCfg.DiscordToken {
-				t.Errorf("Load() DiscordToken = %v, want %v", config.DiscordToken, tt.expectedCfg.DiscordToken)
-			}
-
-			if config.LogLevel != tt.expectedCfg.LogLevel {
-				t.Errorf("Load() LogLevel = %v, want %v", config.LogLevel, tt.expectedCfg.LogLevel)
-			}
-
-			// Check TTS configuration
-			if config.TTS.DefaultVoice != tt.expectedCfg.TTS.DefaultVoice {
-				t.Errorf("Load() TTS.DefaultVoice = %v, want %v", config.TTS.DefaultVoice, tt.expectedCfg.TTS.DefaultVoice)
-			}
-			if config.TTS.DefaultSpeed != tt.expectedCfg.TTS.DefaultSpeed {
-				t.Errorf("Load() TTS.DefaultSpeed = %v, want %v", config.TTS.DefaultSpeed, tt.expectedCfg.TTS.DefaultSpeed)
-			}
-			if config.TTS.DefaultVolume != tt.expectedCfg.TTS.DefaultVolume {
-				t.Errorf("Load() TTS.DefaultVolume = %v, want %v", config.TTS.DefaultVolume, tt.expectedCfg.TTS.DefaultVolume)
-			}
-		})
+	if config.TTS.DefaultSpeed != 1.5 {
+		t.Errorf("Expected tts.default_speed to be 1.5, got %f", config.TTS.DefaultSpeed)
 	}
 }
 
-func TestConfig_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  *Config
-		wantErr bool
+func TestConfigKeyToDRTEnvMapping(t *testing.T) {
+	cm := NewConfigManager()
+
+	testCases := []struct {
+		configKey string
+		expected  string
 	}{
-		{
-			name: "valid_config",
-			config: &Config{
-				DiscordToken: "valid-token",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					DefaultVoice:     "en-US-Standard-A",
-					DefaultSpeed:     1.0,
-					DefaultVolume:    1.0,
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "empty_discord_token",
-			config: &Config{
-				DiscordToken: "",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					DefaultSpeed:     1.0,
-					DefaultVolume:    1.0,
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "whitespace_discord_token",
-			config: &Config{
-				DiscordToken: "   ",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					DefaultSpeed:     1.0,
-					DefaultVolume:    1.0,
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid_log_level",
-			config: &Config{
-				DiscordToken: "valid-token",
-				LogLevel:     "INVALID",
-				TTS: TTSConfig{
-					DefaultSpeed:     1.0,
-					DefaultVolume:    1.0,
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "lowercase_log_level_gets_normalized",
-			config: &Config{
-				DiscordToken: "valid-token",
-				LogLevel:     "warn",
-				TTS: TTSConfig{
-					DefaultSpeed:     1.0,
-					DefaultVolume:    1.0,
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid_tts_speed_too_low",
-			config: &Config{
-				DiscordToken: "valid-token",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					DefaultSpeed:     0.1, // Too low
-					DefaultVolume:    1.0,
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid_tts_speed_too_high",
-			config: &Config{
-				DiscordToken: "valid-token",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					DefaultSpeed:     5.0, // Too high
-					DefaultVolume:    1.0,
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid_tts_volume_too_high",
-			config: &Config{
-				DiscordToken: "valid-token",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					DefaultSpeed:     1.0,
-					DefaultVolume:    3.0, // Too high
-					MaxQueueSize:     10,
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid_queue_size_too_high",
-			config: &Config{
-				DiscordToken: "valid-token",
-				LogLevel:     "INFO",
-				TTS: TTSConfig{
-					DefaultSpeed:     1.0,
-					DefaultVolume:    1.0,
-					MaxQueueSize:     200, // Too high
-					MaxMessageLength: 500,
-				},
-			},
-			wantErr: true,
-		},
+		{"discord_token", "DRT_DISCORD_TOKEN"},
+		{"log_level", "DRT_LOG_LEVEL"},
+		{"tts.default_speed", "DRT_TTS_DEFAULT_SPEED"},
+		{"tts.google_cloud_credentials_path", "DRT_TTS_GOOGLE_CLOUD_CREDENTIALS_PATH"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Validate() expected error, got nil")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("Validate() unexpected error: %v", err)
-			}
-
-			// Check that lowercase log levels get normalized to uppercase
-			if tt.name == "lowercase_log_level_gets_normalized" {
-				if tt.config.LogLevel != "WARN" {
-					t.Errorf("Validate() LogLevel normalization failed, got %v, want WARN", tt.config.LogLevel)
-				}
-			}
-		})
+	for _, tc := range testCases {
+		result := cm.getDRTEnvKey(tc.configKey)
+		if result != tc.expected {
+			t.Errorf("getDRTEnvKey(%s): expected %s, got %s", tc.configKey, tc.expected, result)
+		}
 	}
 }
 
-func TestGetEnvWithDefault(t *testing.T) {
-	tests := []struct {
-		name         string
-		key          string
-		defaultValue string
-		envValue     string
-		setEnv       bool
-		expected     string
+func TestDRTEnvToConfigKeyMapping(t *testing.T) {
+	cm := NewConfigManager()
+
+	testCases := []struct {
+		envVar   string
+		expected string
 	}{
-		{
-			name:         "env_var_exists",
-			key:          "TEST_VAR",
-			defaultValue: "default",
-			envValue:     "custom",
-			setEnv:       true,
-			expected:     "custom",
-		},
-		{
-			name:         "env_var_not_set",
-			key:          "MISSING_VAR",
-			defaultValue: "default",
-			envValue:     "",
-			setEnv:       false,
-			expected:     "default",
-		},
-		{
-			name:         "env_var_empty_string",
-			key:          "EMPTY_VAR",
-			defaultValue: "default",
-			envValue:     "",
-			setEnv:       true,
-			expected:     "default",
-		},
+		{"DRT_DISCORD_TOKEN", "discord_token"},
+		{"DRT_LOG_LEVEL", "log_level"},
+		{"DRT_TTS_DEFAULT_SPEED", "tts.default_speed"},
+		{"DRT_TTS_GOOGLE_CLOUD_CREDENTIALS_PATH", "tts.google_cloud_credentials_path"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Clear the environment variable
-			if err := os.Unsetenv(tt.key); err != nil {
-				t.Fatalf("Failed to unset env var %s: %v", tt.key, err)
-			}
+	for _, tc := range testCases {
+		result := cm.getConfigKeyForDRTEnv(tc.envVar)
+		if result != tc.expected {
+			t.Errorf("getConfigKeyForDRTEnv(%s): expected %s, got %s", tc.envVar, tc.expected, result)
+		}
+	}
+}
 
-			if tt.setEnv {
-				if err := os.Setenv(tt.key, tt.envValue); err != nil {
-					t.Fatalf("Failed to set env var %s: %v", tt.key, err)
-				}
-			}
+func TestConfigurationPrecedence(t *testing.T) {
+	// Test that CLI flags > environment variables > config file > defaults precedence works
 
-			result := getEnvWithDefault(tt.key, tt.defaultValue)
+	// Set required environment variables
+	_ = os.Setenv("DRT_DISCORD_TOKEN", "test-token")
+	_ = os.Setenv("DRT_LOG_LEVEL", "WARN")
+	defer func() {
+		_ = os.Unsetenv("DRT_DISCORD_TOKEN")
+		_ = os.Unsetenv("DRT_LOG_LEVEL")
+	}()
 
-			if result != tt.expected {
-				t.Errorf("getEnvWithDefault() = %v, want %v", result, tt.expected)
-			}
+	cm := NewConfigManager()
 
-			// Clean up
-			if err := os.Unsetenv(tt.key); err != nil {
-				t.Logf("Failed to clean up env var %s: %v", tt.key, err)
-			}
-		})
+	// Load config (should get WARN from env var)
+	config, err := cm.LoadConfig()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	if config.LogLevel != "WARN" {
+		t.Errorf("Expected log_level to be 'WARN' from env var, got '%s'", config.LogLevel)
+	}
+
+	// Override with programmatic setting (simulating CLI flag)
+	cm.SetConfigValue("log_level", "ERROR")
+
+	// Reload config
+	config, err = cm.LoadConfig()
+	if err != nil {
+		t.Fatalf("Failed to reload config: %v", err)
+	}
+
+	if config.LogLevel != "ERROR" {
+		t.Errorf("Expected log_level to be 'ERROR' from programmatic override, got '%s'", config.LogLevel)
 	}
 }
