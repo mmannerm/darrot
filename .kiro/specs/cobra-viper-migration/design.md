@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design outlines the migration from basic Go flags and environment variable configuration to a modern CLI architecture using Cobra for command handling and Viper for configuration management. The migration will maintain full backward compatibility while providing enhanced CLI features, flexible configuration options, and better user experience.
+This design outlines the migration from basic Go flags and environment variable configuration to a modern CLI architecture using Cobra for command handling and Viper for configuration management.
 
 The design follows the principle of simplicity while adding powerful features that improve operational efficiency and developer experience.
 
@@ -90,6 +90,14 @@ type ConfigWithSources struct {
     Sources map[string]ConfigSource
 }
 ```
+
+#### Environment Variable Support
+- **Automatic Binding**: Viper's `AutomaticEnv()` with prefix "DRT"
+- **Variable Naming**: Environment variables use `DRT_` prefix with uppercase and underscores
+- **Examples**: 
+  - `DRT_DISCORD_TOKEN` maps to `discord_token`
+  - `DRT_TTS_DEFAULT_SPEED` maps to `tts.default_speed`
+  - `DRT_LOG_LEVEL` maps to `log_level`
 
 #### Configuration File Locations
 1. `./darrot.yaml` (current directory)
@@ -232,39 +240,34 @@ func TestStartCommand(t *testing.T) {
 
 ## Implementation Phases
 
-### Phase 1: Core Migration
+### Phase 1: Core CLI Structure
 1. Add Cobra and Viper dependencies
-2. Create basic command structure
-3. Implement configuration loading with Viper
-4. Maintain backward compatibility
+2. Create command structure (root, start, version, config)
+3. Implement basic Viper configuration loading from files and CLI flags
+4. Replace existing main.go with Cobra command execution
 
-### Phase 2: Enhanced CLI Features
-1. Implement config subcommands
-2. Add shell completion support
-3. Enhance error messages and help text
-4. Add configuration file creation
+### Phase 2: Configuration Management
+1. Implement config subcommands (validate, show, create)
+2. Add comprehensive error handling and validation
+3. Support multiple configuration file formats
+4. Add shell completion support
 
-### Phase 3: Advanced Features
-1. Configuration validation and inspection
-2. Multiple output formats
-3. Advanced CLI features (colors, progress indicators)
-4. Performance optimizations
+### Phase 3: Polish and Testing
+1. Enhanced error messages and help text
+2. Comprehensive testing suite
+3. Documentation updates
+4. Final integration and cleanup
 
-## Backward Compatibility
+## Migration Strategy
 
-### Environment Variable Support
-- All existing environment variables continue to work
-- Same validation rules and default values
-- Identical behavior when using environment-only configuration
+### Modern CLI Implementation
+- **Cobra/Viper Architecture**: Clean implementation using modern Go CLI patterns
+- **Multiple Configuration Sources**: Support for config files, environment variables, and CLI flags
+- **Simplified Environment Variables**: Use Viper's automatic environment variable binding with "DRT" prefix
+- **Configuration Files**: Primary focus on YAML/JSON/TOML configuration files with automatic discovery
 
-### Migration Path
-1. **No Changes Required**: Existing deployments work without modification
-2. **Gradual Migration**: Users can adopt new features incrementally
-3. **Configuration Export**: `darrot config create` helps migrate to config files
-4. **Documentation**: Clear migration guide with examples
-
-### Deprecation Strategy
-- No immediate deprecation of environment variables
-- Future versions may add deprecation warnings
-- Long-term support for environment variable configuration
-- Clear communication about any future changes
+### Environment Variable Changes
+- **New Prefix**: All environment variables must use "DRT_" prefix (e.g., `DRT_DISCORD_TOKEN`)
+- **Automatic Mapping**: Viper automatically maps environment variables to configuration keys
+- **Backward Compatibility**: Existing environment variables without prefix will no longer work
+- **Migration Required**: Users must update environment variable names to include "DRT_" prefix
