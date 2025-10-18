@@ -48,18 +48,6 @@ This feature involves migrating the darrot Discord TTS bot from basic Go flags a
 
 ### Requirement 4
 
-**User Story:** As a developer, I want backward compatibility with existing environment variable configuration, so that current deployments continue to work without modification.
-
-#### Acceptance Criteria
-
-1. WHEN existing environment variables are set THEN the system SHALL continue to read and use them with the same behavior
-2. WHEN both old environment variables and new config methods are used THEN the system SHALL follow proper precedence rules
-3. WHEN the system starts THEN it SHALL maintain all existing configuration validation rules
-4. WHEN migrating configuration THEN the system SHALL preserve all current configuration options and their default values
-5. WHEN using legacy environment-only configuration THEN the system SHALL work identically to the current implementation
-
-### Requirement 5
-
 **User Story:** As a system administrator, I want enhanced CLI features like shell completion and better error handling, so that I can operate the bot more efficiently and troubleshoot issues faster.
 
 #### Acceptance Criteria

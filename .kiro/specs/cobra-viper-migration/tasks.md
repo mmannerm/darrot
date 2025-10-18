@@ -35,23 +35,50 @@
     - Add all current configuration options as CLI flags
     - _Requirements: 1.3, 1.4_
 
-- [ ] 3. Integrate Viper configuration management
-  - [ ] 3.1 Create Viper-based configuration loader
+- [x] 3. Integrate Viper configuration management
+
+
+
+
+
+
+
+
+
+
+
+
+
+  - [x] 3.1 Create Viper-based configuration loader
+
+
+
+
     - Implement ConfigManager struct with Viper integration
     - Set up configuration file search paths and format support
     - _Requirements: 2.1, 2.4, 2.5_
 
-  - [ ] 3.2 Implement configuration precedence system
-    - Set up precedence order: CLI flags > environment variables > config file > defaults
-    - Ensure all current environment variables continue to work
-    - _Requirements: 2.2, 2.3, 4.1, 4.2_
 
-  - [ ] 3.3 Add default values for all configuration options
+
+  - [x] 3.2 Implement configuration precedence system
+
+
+    - Set up precedence order: CLI flags > environment variables > config file > defaults
+    - Configure Viper's AutomaticEnv with "DRT" prefix for environment variable support
+
+
+    - _Requirements: 2.2, 2.3, 2.6_
+
+  - [x] 3.3 Add default values for all configuration options
+
+
     - Define sensible defaults for all non-sensitive configuration options
     - Maintain existing default values from current implementation
+
     - _Requirements: 2.3, 4.4, 4.5_
 
-- [ ] 4. Implement config command group
+- [x] 4. Implement config command group
+
   - [ ] 4.1 Create config validate subcommand
     - Implement configuration validation without starting the bot
     - Provide clear error messages for invalid configurations
@@ -88,8 +115,8 @@
 
   - [ ] 6.2 Update configuration loading in bot initialization
     - Modify bot initialization to use new Viper-based configuration
-    - Ensure backward compatibility with existing configuration validation
-    - _Requirements: 4.2, 4.4, 4.5_
+    - Update configuration validation to work with new structure
+    - _Requirements: 2.7_
 
 - [ ] 7. Add comprehensive testing
   - [ ]* 7.1 Write unit tests for CLI commands
@@ -107,15 +134,15 @@
     - Test output formatting and error handling
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-  - [ ]* 7.4 Write backward compatibility tests
-    - Test existing environment variable configurations
-    - Test migration scenarios and edge cases
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+  - [ ]* 7.4 Write environment variable tests
+    - Test new DRT_ prefixed environment variable configurations
+    - Test environment variable precedence and mapping
+    - _Requirements: 2.2, 2.6_
 
 - [ ] 8. Update documentation and examples
   - [ ] 8.1 Update README with new CLI usage
     - Document all new commands and configuration options
-    - Provide migration guide from environment variables
+    - Provide migration guide for new DRT_ environment variable prefix
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
   - [ ] 8.2 Create example configuration files
