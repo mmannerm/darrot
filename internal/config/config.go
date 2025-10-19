@@ -28,7 +28,8 @@ type TTSConfig struct {
 
 // ConfigManager manages configuration loading with Viper
 type ConfigManager struct {
-	viper *viper.Viper
+	viper          *viper.Viper
+	specificConfig string // tracks if a specific config file was set
 }
 
 // ConfigSource represents the source of a configuration value
@@ -63,17 +64,22 @@ func NewConfigManager() *ConfigManager {
 	return &ConfigManager{viper: v}
 }
 
-// tryReadConfigFile attempts to read config files from standard locations
+// tryReadConfigFile attempts to read config files from standard locations or a specific file
 func (cm *ConfigManager) tryReadConfigFile() error {
-	// Set consistent config name across all locations
-	cm.viper.SetConfigName("darrot-config")
+	// Check if a specific config file has been set via SetConfigFile
+	if cm.specificConfig == "" {
+		// No specific config file set, use default search behavior
+		// Set consistent config name across all locations
+		cm.viper.SetConfigName("darrot-config")
 
-	// Add config search paths in order of preference
-	cm.viper.AddConfigPath(".") // ./darrot-config.{yaml,json,toml}
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		cm.viper.AddConfigPath(homeDir) // ~/darrot-config.{yaml,json,toml}
+		// Add config search paths in order of preference
+		cm.viper.AddConfigPath(".") // ./darrot-config.{yaml,json,toml}
+		if homeDir, err := os.UserHomeDir(); err == nil {
+			cm.viper.AddConfigPath(homeDir) // ~/darrot-config.{yaml,json,toml}
+		}
+		cm.viper.AddConfigPath("/etc/darrot/") // /etc/darrot/darrot-config.{yaml,json,toml}
 	}
-	cm.viper.AddConfigPath("/etc/darrot/") // /etc/darrot/darrot-config.{yaml,json,toml}
+	// If specificConfig is set, Viper will use the file set by SetConfigFile
 
 	// Try to read config file - Viper will automatically try multiple formats
 	if err := cm.viper.ReadInConfig(); err != nil {
@@ -134,6 +140,7 @@ func (cm *ConfigManager) LoadConfigWithSources() (*ConfigWithSources, error) {
 
 // SetConfigFile sets a specific config file path
 func (cm *ConfigManager) SetConfigFile(configFile string) {
+	cm.specificConfig = configFile
 	cm.viper.SetConfigFile(configFile)
 }
 
@@ -323,6 +330,14 @@ func (cm *ConfigManager) BindFlags(flagSet interface{}) error {
 
 	// Note: Actual flag binding will be done in the CLI command files
 	// This method provides the interface for the CLI layer to bind flags
+	return nil
+}
+
+// BindFlagsFromCommand binds CLI flags from a Cobra command to configuration keys
+func (cm *ConfigManager) BindFlagsFromCommand(cmd interface{}) error {
+	// This method will be used by CLI commands to bind their flags
+	// The actual implementation depends on the Cobra command structure
+	// For now, this provides the interface that CLI commands can use
 	return nil
 }
 

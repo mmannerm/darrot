@@ -9,7 +9,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // startCmd represents the start command
@@ -29,20 +28,28 @@ The bot will run until interrupted with Ctrl+C or a termination signal.`,
 
 		logger.Printf("Starting darrot Discord TTS bot v%s...", version)
 
-		// Bind CLI flags to Viper
-		if err := bindStartFlags(cmd); err != nil {
-			logger.Fatalf("Failed to bind flags: %v", err)
-			return err
-		}
-
 		// Load environment variables from .env file if it exists
 		if err := godotenv.Load(); err != nil {
 			// Don't fail if .env file doesn't exist, just log it
 			logger.Printf("No .env file found or error loading it: %v", err)
 		}
 
-		// Load configuration from environment variables and CLI flags
-		cfg, err := config.Load()
+		// Create a new config manager
+		cm := config.NewConfigManager()
+
+		// If a config file was specified via global flag, use it
+		if cfgFile != "" {
+			cm.SetConfigFile(cfgFile)
+		}
+
+		// Bind CLI flags to the config manager's Viper instance
+		if err := bindStartFlags(cm, cmd); err != nil {
+			logger.Fatalf("Failed to bind flags: %v", err)
+			return err
+		}
+
+		// Load configuration from all sources
+		cfg, err := cm.LoadConfig()
 		if err != nil {
 			logger.Fatalf("Failed to load configuration: %v", err)
 			return err
@@ -95,30 +102,32 @@ func init() {
 	startCmd.Flags().Int("tts-max-message-length", 500, "Maximum message length for TTS (1-2000)")
 }
 
-// bindStartFlags binds CLI flags to Viper configuration keys
-func bindStartFlags(cmd *cobra.Command) error {
+// bindStartFlags binds CLI flags to the ConfigManager's Viper instance
+func bindStartFlags(cm *config.ConfigManager, cmd *cobra.Command) error {
+	v := cm.GetViper()
+
 	// Bind Discord configuration
-	if err := viper.BindPFlag("discord_token", cmd.Flags().Lookup("discord-token")); err != nil {
+	if err := v.BindPFlag("discord_token", cmd.Flags().Lookup("discord-token")); err != nil {
 		return err
 	}
 
 	// Bind TTS configuration
-	if err := viper.BindPFlag("google_cloud_credentials_path", cmd.Flags().Lookup("google-cloud-credentials-path")); err != nil {
+	if err := v.BindPFlag("tts.google_cloud_credentials_path", cmd.Flags().Lookup("google-cloud-credentials-path")); err != nil {
 		return err
 	}
-	if err := viper.BindPFlag("tts_default_voice", cmd.Flags().Lookup("tts-default-voice")); err != nil {
+	if err := v.BindPFlag("tts.default_voice", cmd.Flags().Lookup("tts-default-voice")); err != nil {
 		return err
 	}
-	if err := viper.BindPFlag("tts_default_speed", cmd.Flags().Lookup("tts-default-speed")); err != nil {
+	if err := v.BindPFlag("tts.default_speed", cmd.Flags().Lookup("tts-default-speed")); err != nil {
 		return err
 	}
-	if err := viper.BindPFlag("tts_default_volume", cmd.Flags().Lookup("tts-default-volume")); err != nil {
+	if err := v.BindPFlag("tts.default_volume", cmd.Flags().Lookup("tts-default-volume")); err != nil {
 		return err
 	}
-	if err := viper.BindPFlag("tts_max_queue_size", cmd.Flags().Lookup("tts-max-queue-size")); err != nil {
+	if err := v.BindPFlag("tts.max_queue_size", cmd.Flags().Lookup("tts-max-queue-size")); err != nil {
 		return err
 	}
-	if err := viper.BindPFlag("tts_max_message_length", cmd.Flags().Lookup("tts-max-message-length")); err != nil {
+	if err := v.BindPFlag("tts.max_message_length", cmd.Flags().Lookup("tts-max-message-length")); err != nil {
 		return err
 	}
 
