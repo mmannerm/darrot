@@ -422,3 +422,46 @@ func (cm *ConfigManager) ValidateDefaults() error {
 
 	return nil
 }
+
+// SaveConfigToFile saves the current effective configuration to a YAML file
+func (cm *ConfigManager) SaveConfigToFile(outputPath string) error {
+	// Load current configuration to ensure it's valid
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Note: We intentionally exclude discord_token from the saved config file
+	// as it's sensitive information that should be provided via environment variables
+
+	// Create a new Viper instance for writing the config file
+	// This ensures we don't interfere with the current configuration
+	writeViper := viper.New()
+	writeViper.SetConfigFile(outputPath)
+
+	// Set non-sensitive configuration values
+	writeViper.Set("log_level", config.LogLevel)
+	writeViper.Set("tts.default_voice", config.TTS.DefaultVoice)
+	writeViper.Set("tts.default_speed", config.TTS.DefaultSpeed)
+	writeViper.Set("tts.default_volume", config.TTS.DefaultVolume)
+	writeViper.Set("tts.max_queue_size", config.TTS.MaxQueueSize)
+	writeViper.Set("tts.max_message_length", config.TTS.MaxMessageLength)
+
+	// Only include Google Cloud credentials path if it's set and not empty
+	if config.TTS.GoogleCloudCredentialsPath != "" {
+		writeViper.Set("tts.google_cloud_credentials_path", config.TTS.GoogleCloudCredentialsPath)
+	}
+
+	// Write the config file
+	if err := writeViper.WriteConfig(); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
+
+// GetDefaultConfigPath returns the default configuration file path
+func (cm *ConfigManager) GetDefaultConfigPath() string {
+	// Use the current directory as the default location
+	return "./darrot-config.yaml"
+}
