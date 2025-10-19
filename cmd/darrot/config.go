@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -80,12 +81,72 @@ Exit codes:
 	},
 }
 
+// configShowCmd represents the config show subcommand
+var configShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Display effective configuration with source information",
+	Long: `Display the effective configuration with source information.
+
+This command shows the current configuration values that would be used
+by the bot, along with information about where each value comes from
+(CLI flags, environment variables, config file, or defaults).
+
+Sensitive values like tokens are masked for security.
+
+Output formats:
+  human-readable (default) - Formatted output with source information
+  json                     - JSON format for programmatic use`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Get format flag
+		format, err := cmd.Flags().GetString("format")
+		if err != nil {
+			return fmt.Errorf("failed to get format flag: %w", err)
+		}
+
+		// Validate format
+		if format != "human" && format != "json" {
+			return fmt.Errorf("invalid format '%s': must be 'human' or 'json'", format)
+		}
+
+		// Create a new config manager
+		cm := config.NewConfigManager()
+
+		// Bind CLI flags to the config manager's Viper instance
+		if err := bindFlagsToConfigManager(cm, cmd); err != nil {
+			return fmt.Errorf("failed to bind flags: %w", err)
+		}
+
+		// If a config file was specified via global flag, set it on the config manager
+		if cfgFile != "" {
+			cm.SetConfigFile(cfgFile)
+		}
+
+		// Load configuration with source information
+		configWithSources, err := cm.LoadConfigWithSources()
+		if err != nil {
+			return fmt.Errorf("failed to load configuration: %w", err)
+		}
+
+		// Display configuration based on format
+		if format == "json" {
+			return displayConfigJSON(configWithSources)
+		}
+
+		return displayConfigHuman(configWithSources)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configValidateCmd)
+	configCmd.AddCommand(configShowCmd)
 
 	// Add the same flags as the start command for validation
 	addConfigFlags(configValidateCmd)
+	addConfigFlags(configShowCmd)
+
+	// Add format flag to show command
+	configShowCmd.Flags().String("format", "human", "Output format (human, json)")
 }
 
 // addConfigFlags adds configuration flags to a command
@@ -225,4 +286,117 @@ func containsSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// displayConfigHuman displays configuration in human-readable format with source information
+func displayConfigHuman(configWithSources *config.ConfigWithSources) error {
+	cfg := configWithSources.Config
+	sources := configWithSources.Sources
+
+	fmt.Println("Effective Configuration:")
+	fmt.Println("========================")
+	fmt.Println()
+
+	// Core configuration
+	fmt.Println("Core Configuration:")
+	fmt.Printf("  Discord Token: %s", maskSensitiveValue(cfg.DiscordToken))
+	if source, ok := sources["discord_token"]; ok {
+		fmt.Printf(" (source: %s)", source.Source)
+	}
+	fmt.Println()
+
+	fmt.Printf("  Log Level: %s", cfg.LogLevel)
+	if source, ok := sources["log_level"]; ok {
+		fmt.Printf(" (source: %s)", source.Source)
+	}
+	fmt.Println()
+	fmt.Println()
+
+	// TTS configuration
+	fmt.Println("TTS Configuration:")
+	if cfg.TTS.GoogleCloudCredentialsPath != "" {
+		fmt.Printf("  Google Cloud Credentials: %s", maskSensitiveValue(cfg.TTS.GoogleCloudCredentialsPath))
+		if source, ok := sources["tts.google_cloud_credentials_path"]; ok {
+			fmt.Printf(" (source: %s)", source.Source)
+		}
+		fmt.Println()
+	}
+
+	fmt.Printf("  Default Voice: %s", cfg.TTS.DefaultVoice)
+	if source, ok := sources["tts.default_voice"]; ok {
+		fmt.Printf(" (source: %s)", source.Source)
+	}
+	fmt.Println()
+
+	fmt.Printf("  Default Speed: %.2f", cfg.TTS.DefaultSpeed)
+	if source, ok := sources["tts.default_speed"]; ok {
+		fmt.Printf(" (source: %s)", source.Source)
+	}
+	fmt.Println()
+
+	fmt.Printf("  Default Volume: %.2f", cfg.TTS.DefaultVolume)
+	if source, ok := sources["tts.default_volume"]; ok {
+		fmt.Printf(" (source: %s)", source.Source)
+	}
+	fmt.Println()
+
+	fmt.Printf("  Max Queue Size: %d", cfg.TTS.MaxQueueSize)
+	if source, ok := sources["tts.max_queue_size"]; ok {
+		fmt.Printf(" (source: %s)", source.Source)
+	}
+	fmt.Println()
+
+	fmt.Printf("  Max Message Length: %d", cfg.TTS.MaxMessageLength)
+	if source, ok := sources["tts.max_message_length"]; ok {
+		fmt.Printf(" (source: %s)", source.Source)
+	}
+	fmt.Println()
+	fmt.Println()
+
+	// Configuration precedence information
+	fmt.Println("Configuration Precedence (highest to lowest):")
+	fmt.Println("  1. CLI flags (--flag-name)")
+	fmt.Println("  2. Environment variables (DRT_*)")
+	fmt.Println("  3. Configuration file")
+	fmt.Println("  4. Default values")
+
+	return nil
+}
+
+// displayConfigJSON displays configuration in JSON format
+func displayConfigJSON(configWithSources *config.ConfigWithSources) error {
+	cfg := configWithSources.Config
+	sources := configWithSources.Sources
+
+	// Create a structure for JSON output that includes masked sensitive values
+	output := map[string]interface{}{
+		"config": map[string]interface{}{
+			"discord_token": maskSensitiveValue(cfg.DiscordToken),
+			"log_level":     cfg.LogLevel,
+			"tts": map[string]interface{}{
+				"google_cloud_credentials_path": maskSensitiveValue(cfg.TTS.GoogleCloudCredentialsPath),
+				"default_voice":                 cfg.TTS.DefaultVoice,
+				"default_speed":                 cfg.TTS.DefaultSpeed,
+				"default_volume":                cfg.TTS.DefaultVolume,
+				"max_queue_size":                cfg.TTS.MaxQueueSize,
+				"max_message_length":            cfg.TTS.MaxMessageLength,
+			},
+		},
+		"sources": sources,
+		"precedence": []string{
+			"CLI flags (--flag-name)",
+			"Environment variables (DRT_*)",
+			"Configuration file",
+			"Default values",
+		},
+	}
+
+	// Marshal to JSON with indentation
+	jsonData, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal configuration to JSON: %w", err)
+	}
+
+	fmt.Println(string(jsonData))
+	return nil
 }

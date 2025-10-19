@@ -90,7 +90,15 @@
     - Provide clear error messages for invalid configurations
     - _Requirements: 3.1, 3.6_
 
-  - [ ] 4.2 Create config show subcommand
+  - [x] 4.2 Create config show subcommand
+
+
+
+
+
+
+
+
     - Display effective configuration with source information
     - Support multiple output formats (human-readable, JSON)
     - Mask sensitive values like tokens
