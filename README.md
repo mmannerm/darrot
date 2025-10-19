@@ -37,22 +37,68 @@ Discord Parrot Text-to-Speech (TTS) AI app that listens to Discord chat channels
    - Generate an invite link from the OAuth2 > URL Generator section
    - Invite the bot to your Discord server
 
-### Environment Configuration
+### Configuration
+
+darrot supports multiple configuration methods with the following precedence order:
+1. **CLI flags** (highest priority)
+2. **Environment variables** (with `DRT_` prefix)
+3. **Configuration files** (YAML, JSON, or TOML)
+4. **Default values** (lowest priority)
+
+#### Quick Setup with Environment Variables
 
 1. **Copy the environment template**
    ```bash
    cp .env.example .env
    ```
 
-2. **Edit the .env file**
-   - Replace `your_discord_bot_token_here` with your actual Discord bot token
-   - Optionally adjust the LOG_LEVEL (DEBUG, INFO, WARN, ERROR)
+2. **Edit the .env file with DRT_ prefix**
+   ```bash
+   # Required
+   DRT_DISCORD_TOKEN=your_actual_bot_token_here
+   
+   # Optional
+   DRT_LOG_LEVEL=INFO
+   DRT_TTS_DEFAULT_VOICE=en-US-Standard-A
+   DRT_TTS_DEFAULT_SPEED=1.0
+   ```
 
-3. **Example .env file**
-   ```
-   DISCORD_TOKEN=your_actual_bot_token_here
-   LOG_LEVEL=INFO
-   ```
+#### Configuration File Setup
+
+Create a configuration file in YAML, JSON, or TOML format:
+
+```bash
+# Generate a sample configuration file
+./darrot config create --output darrot.yaml
+
+# Or create manually
+cat > darrot.yaml << EOF
+discord_token: "your_bot_token_here"
+log_level: "INFO"
+tts:
+  default_voice: "en-US-Standard-A"
+  default_speed: 1.0
+  default_volume: 1.0
+  max_queue_size: 10
+  max_message_length: 500
+EOF
+```
+
+#### Configuration Management Commands
+
+```bash
+# Validate your configuration
+./darrot config validate
+
+# View effective configuration
+./darrot config show
+
+# View configuration in JSON format
+./darrot config show --format json
+
+# Create configuration file from current settings
+./darrot config create --output my-config.yaml
+```
 
 ## Deployment Options
 
@@ -63,7 +109,7 @@ The easiest way to run darrot is using containers with Podman or Docker:
 ```bash
 # Quick start with Podman
 cp container-env.example .env
-# Edit .env with your Discord token
+# Edit .env with your Discord token (use DRT_ prefix)
 podman build --pull -t darrot:latest .
 podman run -d --name darrot-bot --env-file .env -v ./data:/app/data:Z darrot:latest
 ```
@@ -86,13 +132,86 @@ go mod tidy
 # Build the application
 go build -o darrot ./cmd/darrot
 
-# Run the bot
-./darrot
+# Run the bot with default configuration
+./darrot start
+
+# Run with custom configuration file
+./darrot start --config /path/to/config.yaml
+
+# Run with CLI flags
+./darrot start --discord-token "your_token" --log-level DEBUG
 ```
 
 ## Usage
 
-### Bot Commands
+### CLI Commands
+
+darrot provides a modern CLI interface with the following commands:
+
+#### Main Commands
+```bash
+# Start the Discord TTS bot
+./darrot start
+
+# Display version information
+./darrot version
+
+# Show help for all commands
+./darrot --help
+
+# Show help for specific command
+./darrot start --help
+```
+
+#### Configuration Management
+```bash
+# Validate configuration without starting the bot
+./darrot config validate
+
+# Display effective configuration with sources
+./darrot config show
+
+# Display configuration in JSON format
+./darrot config show --format json
+
+# Create configuration file from current settings
+./darrot config create
+
+# Save configuration to specific location
+./darrot config create --output /path/to/config.yaml
+```
+
+#### Shell Completion
+```bash
+# Generate bash completion
+./darrot completion bash > /etc/bash_completion.d/darrot
+
+# Generate zsh completion
+./darrot completion zsh > ~/.zsh/completions/_darrot
+
+# Generate PowerShell completion
+./darrot completion powershell > darrot.ps1
+```
+
+#### CLI Flags for Start Command
+```bash
+# Core configuration
+./darrot start --discord-token "your_token"
+./darrot start --config /path/to/config.yaml
+./darrot start --log-level DEBUG
+
+# TTS configuration
+./darrot start --tts-default-voice "en-US-Neural2-A"
+./darrot start --tts-default-speed 1.2
+./darrot start --tts-default-volume 0.8
+./darrot start --tts-max-queue-size 15
+./darrot start --tts-max-message-length 600
+
+# Google Cloud TTS (optional)
+./darrot start --google-cloud-credentials-path /path/to/credentials.json
+```
+
+### Discord Bot Commands
 
 Once the bot is running and invited to your server:
 
@@ -105,11 +224,26 @@ Once the bot is running and invited to your server:
 
 ### Getting Started
 
-1. Invite the bot to your Discord server with appropriate permissions
-2. Join a voice channel
-3. Use `/tts-join` to start the TTS service
-4. Type messages in the linked text channel to hear them spoken
-5. Use `/tts-config` to customize voice settings
+1. **Configure the bot**
+   ```bash
+   # Option 1: Use environment variables
+   export DRT_DISCORD_TOKEN="your_bot_token"
+   ./darrot start
+   
+   # Option 2: Use configuration file
+   ./darrot config create --output darrot.yaml
+   # Edit darrot.yaml with your settings
+   ./darrot start --config darrot.yaml
+   
+   # Option 3: Use CLI flags
+   ./darrot start --discord-token "your_token" --log-level INFO
+   ```
+
+2. Invite the bot to your Discord server with appropriate permissions
+3. Join a voice channel
+4. Use `/tts-join` to start the TTS service
+5. Type messages in the linked text channel to hear them spoken
+6. Use `/tts-config` to customize voice settings
 
 ## Development
 
@@ -191,11 +325,14 @@ go build -ldflags "-X main.version=dev -X main.commit=$(git rev-parse --short HE
 # Check container logs
 podman logs darrot-bot
 
-# Verify environment variables
-podman exec darrot-bot env | grep DISCORD
+# Verify environment variables (note DRT_ prefix)
+podman exec darrot-bot env | grep DRT_
+
+# Test configuration validation
+podman run --rm --env-file .env darrot:latest config validate
 
 # Test with debug logging
-podman run -d --name darrot-debug --env-file .env -e LOG_LEVEL=DEBUG darrot:latest
+podman run -d --name darrot-debug --env-file .env -e DRT_LOG_LEVEL=DEBUG darrot:latest
 ```
 
 **Permission errors with container volumes:**
@@ -206,8 +343,10 @@ sudo chown -R 1001:1001 ./data
 
 ### Getting Help
 
+- Use `./darrot config validate` to check configuration issues
+- Use `./darrot config show` to see effective configuration and sources
 - Check the [Container Documentation](CONTAINER.md) for deployment issues
-- Review logs with `LOG_LEVEL=DEBUG` for detailed troubleshooting
+- Review logs with `DRT_LOG_LEVEL=DEBUG` for detailed troubleshooting
 - Verify Discord bot permissions and token validity
 - Ensure Google Cloud TTS API is enabled and credentials are valid
 
@@ -226,20 +365,102 @@ Key components:
 - **TTS Manager**: Google Cloud TTS integration
 - **Error Recovery**: Comprehensive error handling and retry logic
 
+## Migration Guide
+
+### Environment Variable Changes
+
+**Important**: Environment variables now require the `DRT_` prefix. Update your existing configuration:
+
+#### Before (Old Format)
+```bash
+DISCORD_TOKEN=your_token
+LOG_LEVEL=INFO
+TTS_DEFAULT_VOICE=en-US-Standard-A
+```
+
+#### After (New Format)
+```bash
+DRT_DISCORD_TOKEN=your_token
+DRT_LOG_LEVEL=INFO
+DRT_TTS_DEFAULT_VOICE=en-US-Standard-A
+```
+
+#### Migration Script
+```bash
+# Quick migration for existing .env files
+sed -i 's/^DISCORD_TOKEN=/DRT_DISCORD_TOKEN=/' .env
+sed -i 's/^LOG_LEVEL=/DRT_LOG_LEVEL=/' .env
+sed -i 's/^GOOGLE_CLOUD_CREDENTIALS_PATH=/DRT_GOOGLE_CLOUD_CREDENTIALS_PATH=/' .env
+sed -i 's/^TTS_/DRT_TTS_/' .env
+```
+
+### Command Changes
+
+#### Before (Old Format)
+```bash
+./darrot  # Direct execution
+```
+
+#### After (New Format)
+```bash
+./darrot start  # Use start subcommand
+```
+
 ## Configuration Reference
 
-### Environment Variables
+### Environment Variables (DRT_ Prefix Required)
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DISCORD_TOKEN` | Yes | - | Discord bot token from Developer Portal |
-| `LOG_LEVEL` | No | INFO | Logging level (DEBUG, INFO, WARN, ERROR) |
-| `GOOGLE_CLOUD_CREDENTIALS_PATH` | No | - | Path to Google Cloud service account JSON |
-| `TTS_DEFAULT_VOICE` | No | en-US-Standard-A | Default TTS voice selection |
-| `TTS_DEFAULT_SPEED` | No | 1.0 | Speech speed (0.25-4.0) |
-| `TTS_DEFAULT_VOLUME` | No | 1.0 | Speech volume (0.0-2.0) |
-| `TTS_MAX_QUEUE_SIZE` | No | 10 | Maximum messages in queue (1-100) |
-| `TTS_MAX_MESSAGE_LENGTH` | No | 500 | Maximum message length for TTS (1-2000) |
+| `DRT_DISCORD_TOKEN` | Yes | - | Discord bot token from Developer Portal |
+| `DRT_LOG_LEVEL` | No | INFO | Logging level (DEBUG, INFO, WARN, ERROR) |
+| `DRT_GOOGLE_CLOUD_CREDENTIALS_PATH` | No | - | Path to Google Cloud service account JSON |
+| `DRT_TTS_DEFAULT_VOICE` | No | en-US-Standard-A | Default TTS voice selection |
+| `DRT_TTS_DEFAULT_SPEED` | No | 1.0 | Speech speed (0.25-4.0) |
+| `DRT_TTS_DEFAULT_VOLUME` | No | 1.0 | Speech volume (0.0-2.0) |
+| `DRT_TTS_MAX_QUEUE_SIZE` | No | 10 | Maximum messages in queue (1-100) |
+| `DRT_TTS_MAX_MESSAGE_LENGTH` | No | 500 | Maximum message length for TTS (1-2000) |
+
+### Configuration File Options
+
+Configuration files support nested structure for better organization:
+
+```yaml
+# darrot.yaml example
+discord_token: "your_bot_token_here"
+log_level: "INFO"
+
+tts:
+  google_cloud_credentials_path: "/path/to/credentials.json"
+  default_voice: "en-US-Standard-A"
+  default_speed: 1.0
+  default_volume: 1.0
+  max_queue_size: 10
+  max_message_length: 500
+
+cli:
+  enable_colors: true
+  completion_shell: "bash"
+```
+
+### CLI Flag Reference
+
+All configuration options are available as CLI flags:
+
+```bash
+# Core flags
+--discord-token string              Discord bot token
+--config string                     Configuration file path
+--log-level string                  Log level (DEBUG, INFO, WARN, ERROR)
+
+# TTS flags
+--google-cloud-credentials-path string    Google Cloud credentials JSON path
+--tts-default-voice string               Default TTS voice
+--tts-default-speed float                Speech speed (0.25-4.0)
+--tts-default-volume float               Speech volume (0.0-2.0)
+--tts-max-queue-size int                 Maximum queue size (1-100)
+--tts-max-message-length int             Maximum message length (1-2000)
+```
 
 ### Google Cloud TTS Setup (Optional)
 
