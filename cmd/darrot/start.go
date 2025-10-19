@@ -100,6 +100,33 @@ func init() {
 	startCmd.Flags().Float32("tts-default-volume", 1.0, "Default TTS volume (0.0-2.0)")
 	startCmd.Flags().Int("tts-max-queue-size", 10, "Maximum TTS queue size (1-100)")
 	startCmd.Flags().Int("tts-max-message-length", 500, "Maximum message length for TTS (1-2000)")
+
+	// Set up custom completion functions for start command
+	setupStartCompletions()
+}
+
+// setupStartCompletions configures custom completion functions for start command flags
+func setupStartCompletions() {
+	// Custom completion for TTS voice flag
+	_ = startCmd.RegisterFlagCompletionFunc("tts-default-voice", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		voices := []string{
+			"en-US-Standard-A", "en-US-Standard-B", "en-US-Standard-C", "en-US-Standard-D",
+			"en-US-Standard-E", "en-US-Standard-F", "en-US-Standard-G", "en-US-Standard-H",
+			"en-US-Standard-I", "en-US-Standard-J",
+			"en-US-Wavenet-A", "en-US-Wavenet-B", "en-US-Wavenet-C", "en-US-Wavenet-D",
+			"en-US-Wavenet-E", "en-US-Wavenet-F", "en-US-Wavenet-G", "en-US-Wavenet-H",
+			"en-US-Wavenet-I", "en-US-Wavenet-J",
+			"en-US-Neural2-A", "en-US-Neural2-C", "en-US-Neural2-D", "en-US-Neural2-E",
+			"en-US-Neural2-F", "en-US-Neural2-G", "en-US-Neural2-H", "en-US-Neural2-I",
+			"en-US-Neural2-J",
+		}
+		return voices, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Custom completion for Google Cloud credentials path
+	_ = startCmd.RegisterFlagCompletionFunc("google-cloud-credentials-path", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveFilterFileExt
+	})
 }
 
 // bindStartFlags binds CLI flags to the ConfigManager's Viper instance

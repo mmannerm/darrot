@@ -37,6 +37,9 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Set up comprehensive error handling
+	setupErrorHandling(rootCmd)
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -44,8 +47,24 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.darrot.yaml)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "INFO", "log level (DEBUG, INFO, WARN, ERROR)")
 
+	// Set up custom completion functions
+	setupRootCompletions()
+
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
+}
+
+// setupRootCompletions configures custom completion functions for root command flags
+func setupRootCompletions() {
+	// Custom completion for log-level flag
+	_ = rootCmd.RegisterFlagCompletionFunc("log-level", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"DEBUG", "INFO", "WARN", "ERROR", "FATAL"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Custom completion for config file paths
+	_ = rootCmd.RegisterFlagCompletionFunc("config", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"yaml", "yml", "json", "toml"}, cobra.ShellCompDirectiveFilterFileExt
+	})
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -214,6 +214,38 @@ func init() {
 
 	// Add output flag to create command
 	configCreateCmd.Flags().String("output", "", "Output file path (default: ./darrot-config.yaml)")
+
+	// Set up custom completion functions for config commands
+	setupConfigCompletions()
+}
+
+// setupConfigCompletions configures custom completion functions for config command flags
+func setupConfigCompletions() {
+	// Custom completion for config show format flag
+	_ = configShowCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"human", "json"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Custom completion for config create output flag
+	_ = configCreateCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt
+	})
+
+	// Add completions to all config subcommands
+	for _, cmd := range []*cobra.Command{configValidateCmd, configShowCmd, configCreateCmd} {
+		_ = cmd.RegisterFlagCompletionFunc("tts-default-voice", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			voices := []string{
+				"en-US-Standard-A", "en-US-Standard-B", "en-US-Standard-C", "en-US-Standard-D",
+				"en-US-Wavenet-A", "en-US-Wavenet-B", "en-US-Wavenet-C", "en-US-Wavenet-D",
+				"en-US-Neural2-A", "en-US-Neural2-C", "en-US-Neural2-D", "en-US-Neural2-E",
+			}
+			return voices, cobra.ShellCompDirectiveNoFileComp
+		})
+
+		_ = cmd.RegisterFlagCompletionFunc("google-cloud-credentials-path", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return []string{"json"}, cobra.ShellCompDirectiveFilterFileExt
+		})
+	}
 }
 
 // addConfigFlags adds configuration flags to a command
