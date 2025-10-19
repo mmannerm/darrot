@@ -136,17 +136,84 @@ Output formats:
 	},
 }
 
+// configCreateCmd represents the config create subcommand
+var configCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Save current effective configuration to file",
+	Long: `Save the current effective configuration to a YAML file.
+
+This command loads the current configuration from all sources (CLI flags,
+environment variables, config files, and defaults) and saves it to a
+properly formatted YAML configuration file.
+
+The saved configuration file will include all non-sensitive configuration
+values. Sensitive values like Discord tokens are excluded for security
+and should be provided via environment variables.
+
+Default output location: ./darrot-config.yaml
+Custom output location: Use --output flag to specify a different path
+
+Example usage:
+  darrot config create                           # Save to ./darrot-config.yaml
+  darrot config create --output ~/my-config.yaml # Save to custom location`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Get output flag
+		outputPath, err := cmd.Flags().GetString("output")
+		if err != nil {
+			return fmt.Errorf("failed to get output flag: %w", err)
+		}
+
+		// Create a new config manager
+		cm := config.NewConfigManager()
+
+		// Bind CLI flags to the config manager's Viper instance
+		if err := bindFlagsToConfigManager(cm, cmd); err != nil {
+			return fmt.Errorf("failed to bind flags: %w", err)
+		}
+
+		// If a config file was specified via global flag, set it on the config manager
+		if cfgFile != "" {
+			cm.SetConfigFile(cfgFile)
+		}
+
+		// If no output path specified, use default
+		if outputPath == "" {
+			outputPath = cm.GetDefaultConfigPath()
+		}
+
+		// Save configuration to file
+		if err := cm.SaveConfigToFile(outputPath); err != nil {
+			return fmt.Errorf("failed to save configuration: %w", err)
+		}
+
+		// Print success message
+		fmt.Printf("✓ Configuration saved to: %s\n", outputPath)
+		fmt.Println()
+		fmt.Println("Note: Sensitive values like Discord tokens are excluded from the config file.")
+		fmt.Println("Set sensitive configuration via environment variables:")
+		fmt.Println("  DRT_DISCORD_TOKEN=your-bot-token")
+		fmt.Println("  DRT_TTS_GOOGLE_CLOUD_CREDENTIALS_PATH=/path/to/credentials.json")
+
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configValidateCmd)
 	configCmd.AddCommand(configShowCmd)
+	configCmd.AddCommand(configCreateCmd)
 
 	// Add the same flags as the start command for validation
 	addConfigFlags(configValidateCmd)
 	addConfigFlags(configShowCmd)
+	addConfigFlags(configCreateCmd)
 
 	// Add format flag to show command
 	configShowCmd.Flags().String("format", "human", "Output format (human, json)")
+
+	// Add output flag to create command
+	configCreateCmd.Flags().String("output", "", "Output file path (default: ./darrot-config.yaml)")
 }
 
 // addConfigFlags adds configuration flags to a command
