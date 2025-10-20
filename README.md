@@ -47,21 +47,18 @@ darrot supports multiple configuration methods with the following precedence ord
 
 #### Quick Setup with Environment Variables
 
-1. **Copy the environment template**
-   ```bash
-   cp .env.example .env
-   ```
+Set environment variables directly or use a configuration file:
 
-2. **Edit the .env file with DRT_ prefix**
-   ```bash
-   # Required
-   DRT_DISCORD_TOKEN=your_actual_bot_token_here
-   
-   # Optional
-   DRT_LOG_LEVEL=INFO
-   DRT_TTS_DEFAULT_VOICE=en-US-Standard-A
-   DRT_TTS_DEFAULT_SPEED=1.0
-   ```
+```bash
+# Set environment variables with DRT_ prefix
+export DRT_DISCORD_TOKEN="your_actual_bot_token_here"
+export DRT_LOG_LEVEL="INFO"
+export DRT_TTS_DEFAULT_VOICE="en-US-Standard-A"
+export DRT_TTS_DEFAULT_SPEED="1.0"
+
+# Start the bot
+./darrot start
+```
 
 #### Configuration File Setup
 
@@ -108,10 +105,10 @@ The easiest way to run darrot is using containers with Podman or Docker:
 
 ```bash
 # Quick start with Podman
-cp container-env.example .env
-# Edit .env with your Discord token (use DRT_ prefix)
+# Create configuration file or set environment variables
+echo 'discord_token: "your_bot_token_here"' > darrot.yaml
 podman build --pull -t darrot:latest .
-podman run -d --name darrot-bot --env-file .env -v ./data:/app/data:Z darrot:latest
+podman run -d --name darrot-bot -v ./darrot.yaml:/app/darrot.yaml:ro -v ./data:/app/data:Z darrot:latest
 ```
 
 **Container Features:**
@@ -312,7 +309,8 @@ go build -ldflags "-X main.version=dev -X main.commit=$(git rev-parse --short HE
 ### Common Issues
 
 **Bot doesn't respond to commands:**
-- Verify the bot token is correct in your `.env` file
+- Verify the bot token is correct in your configuration
+- Use `./darrot config show` to check your effective configuration
 - Ensure the bot has `applications.commands` and `bot` permissions
 - Check that the bot is online in your Discord server
 
@@ -330,10 +328,10 @@ podman logs darrot-bot
 podman exec darrot-bot env | grep DRT_
 
 # Test configuration validation
-podman run --rm --env-file .env darrot:latest config validate
+podman run --rm -v ./darrot.yaml:/app/darrot.yaml:ro darrot:latest config validate
 
 # Test with debug logging
-podman run -d --name darrot-debug --env-file .env -e DRT_LOG_LEVEL=DEBUG darrot:latest
+podman run -d --name darrot-debug -v ./darrot.yaml:/app/darrot.yaml:ro -e DRT_LOG_LEVEL=DEBUG darrot:latest
 ```
 
 **Permission errors with container volumes:**
@@ -386,13 +384,17 @@ DRT_LOG_LEVEL=INFO
 DRT_TTS_DEFAULT_VOICE=en-US-Standard-A
 ```
 
-#### Migration Script
-```bash
-# Quick migration for existing .env files
-sed -i 's/^DISCORD_TOKEN=/DRT_DISCORD_TOKEN=/' .env
-sed -i 's/^LOG_LEVEL=/DRT_LOG_LEVEL=/' .env
+#### Migration from Environment Variables
 
-sed -i 's/^TTS_/DRT_TTS_/' .env
+If you were using environment variables, you can continue using them with the DRT_ prefix, or migrate to configuration files:
+
+```bash
+# Option 1: Continue using environment variables with DRT_ prefix
+export DRT_DISCORD_TOKEN="$DISCORD_TOKEN"
+export DRT_LOG_LEVEL="$LOG_LEVEL"
+
+# Option 2: Create a configuration file
+./darrot config create --output darrot.yaml
 ```
 
 ### Command Changes
