@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Test configuration
 CONTAINER_NAME="darrot-test-$(date +%s)"
 IMAGE_NAME="darrot:test"
-TEST_ENV_FILE="tests/container/test.env"
+TEST_CONFIG_FILE="tests/container/test.yaml"
 
 # Cleanup function
 cleanup() {
@@ -80,20 +80,21 @@ test_image_properties() {
 test_container_startup() {
     echo -e "${YELLOW}Test 3: Testing container startup...${NC}"
     
-    # Check if project .env file exists
-    if [ -f ".env" ]; then
-        echo -e "${GREEN}✓ Using existing .env file from project root${NC}"
-        ENV_FILE_ARG="--env-file .env"
+    # Check if project configuration file exists
+    if [ -f "darrot-config.yaml" ]; then
+        echo -e "${GREEN}✓ Using existing darrot-config.yaml file from project root${NC}"
+        CONFIG_ARG="-v ./darrot-config.yaml:/app/darrot-config.yaml:ro"
     else
-        # Create minimal test environment file
-        mkdir -p "$(dirname "$TEST_ENV_FILE")"
-        cat > "$TEST_ENV_FILE" << EOF
-DISCORD_TOKEN=test_token_for_validation
-LOG_LEVEL=DEBUG
-TTS_DEFAULT_VOICE=en-US-Standard-A
+        # Create minimal test configuration file
+        mkdir -p "$(dirname "$TEST_CONFIG_FILE")"
+        cat > "$TEST_CONFIG_FILE" << EOF
+discord_token: "test_token_for_validation"
+log_level: "DEBUG"
+tts:
+  default_voice: "en-US-Standard-A"
 EOF
-        echo -e "${YELLOW}⚠ No .env file found, using test configuration${NC}"
-        ENV_FILE_ARG="--env-file $TEST_ENV_FILE"
+        echo -e "${YELLOW}⚠ No darrot-config.yaml file found, using test configuration${NC}"
+        CONFIG_ARG="-v $TEST_CONFIG_FILE:/app/darrot-config.yaml:ro"
     fi
     
     # Add Google Cloud credentials from host environment if available

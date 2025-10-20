@@ -11,7 +11,7 @@ Successfully implemented comprehensive integration tests for the Discord test co
 1. **`internal/bot/integration_test.go`** - Main integration test suite
 2. **`internal/bot/integration_test_setup.md`** - Setup and configuration guide
 3. **`scripts/run-integration-tests.sh`** - Linux/macOS test runner
-4. **`scripts/run-integration-tests.bat`** - Windows test runner
+
 5. **`docs/testing.md`** - Comprehensive testing documentation
 
 #### Modified Files
@@ -74,8 +74,7 @@ Successfully implemented comprehensive integration tests for the Discord test co
 - **Unit Test Compatibility**: Can run unit tests independently with `-short` flag
 
 #### Cross-Platform Support
-- **Windows**: Batch script (`run-integration-tests.bat`)
-- **Linux/macOS**: Shell script (`run-integration-tests.sh`)
+- **Linux**: Shell script (`run-integration-tests.sh`)
 - **Go Native**: Direct `go test` commands work on all platforms
 
 #### Comprehensive Documentation
@@ -102,8 +101,7 @@ go test ./internal/bot -v
 # Linux/macOS
 ./scripts/run-integration-tests.sh
 
-# Windows
-scripts\run-integration-tests.bat
+
 ```
 
 ### Test Results

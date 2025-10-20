@@ -1,6 +1,6 @@
 {
   "_comment": "darrot Configuration File (JSON)",
-  "_description": "This is an example configuration file for the darrot Discord TTS bot. Copy this file to darrot.json and customize the values for your setup.",
+  "_description": "This is an example configuration file for the darrot Discord TTS bot. Copy this file to darrot-config.json and customize the values for your setup.",
   "_precedence": "Configuration precedence (highest to lowest): 1. CLI flags, 2. Environment variables (DRT_ prefix), 3. Configuration file, 4. Default values",
   
   "discord_token": "your_discord_bot_token_here",

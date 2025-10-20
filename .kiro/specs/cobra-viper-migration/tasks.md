@@ -131,7 +131,7 @@
   - [x] 5.2 Add shell completion support
 
 
-    - Generate bash, zsh, and PowerShell completion scripts
+    - Generate bash, zsh, and fish completion scripts
     - Implement completion commands for all shells
     - _Requirements: 5.1, 5.2, 5.3_
 

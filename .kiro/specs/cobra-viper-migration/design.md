@@ -103,7 +103,7 @@ type ConfigWithSources struct {
 1. `./darrot.yaml` (current directory)
 2. `~/.darrot.yaml` (user home directory)
 3. `/etc/darrot/config.yaml` (system-wide, Linux/macOS)
-4. `%APPDATA%\darrot\config.yaml` (Windows)
+
 
 #### Supported Formats
 - YAML (primary)
@@ -213,7 +213,7 @@ Suggestion: Update the value in your config file or override with:
 - **End-to-End CLI**: Test complete command workflows
 - **Configuration Integration**: Test real configuration file loading
 - **Backward Compatibility**: Test existing environment variable configurations
-- **Cross-Platform**: Test on Windows, Linux, and macOS
+- **Linux-focused**: Test on Linux with container deployment
 
 ### Test Structure
 ```go

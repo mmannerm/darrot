@@ -24,8 +24,10 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
-.env
+# Configuration files (may contain sensitive data)
+darrot-config.yaml
+darrot-config.json
+darrot-config.toml
 
 # Editor/IDE
 # .idea/

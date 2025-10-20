@@ -189,7 +189,7 @@ on:
 4. **Team Training**: Share workflow documentation with contributors
 
 ### Future Enhancements
-- **Windows/macOS Builds**: Extend release workflow for additional platforms
+- **Enhanced Linux Builds**: Extend release workflow for additional Linux distributions
 - **Performance Benchmarks**: Add performance regression testing
 - **Security Scanning**: Integrate additional security analysis tools
 - **Deployment Automation**: Add deployment to package registries

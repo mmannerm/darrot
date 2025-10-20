@@ -9,7 +9,7 @@ import (
 
 // completionCmd represents the completion command
 var completionCmd = &cobra.Command{
-	Use:   "completion [bash|zsh|fish|powershell]",
+	Use:   "completion [bash|zsh|fish]",
 	Short: "Generate shell completion scripts",
 	Long: `Generate shell completion scripts for darrot.
 
@@ -42,14 +42,9 @@ Fish:
   # Install completion permanently
   darrot completion fish > ~/.config/fish/completions/darrot.fish
 
-PowerShell:
-  # Load completion for current session
-  darrot completion powershell | Out-String | Invoke-Expression
-  
-  # Install completion permanently (add to PowerShell profile)
-  darrot completion powershell >> $PROFILE`,
+`,
 	DisableFlagsInUseLine: true,
-	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
+	ValidArgs:             []string{"bash", "zsh", "fish"},
 	Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		shell := args[0]
@@ -61,8 +56,6 @@ PowerShell:
 			return cmd.Root().GenZshCompletion(os.Stdout)
 		case "fish":
 			return cmd.Root().GenFishCompletion(os.Stdout, true)
-		case "powershell":
-			return cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
 		default:
 			return fmt.Errorf("unsupported shell: %s", shell)
 		}
@@ -129,27 +122,6 @@ You may need to start a new shell for this setup to take effect.`,
 	},
 }
 
-// completionPowershellCmd represents the completion powershell command
-var completionPowershellCmd = &cobra.Command{
-	Use:   "powershell",
-	Short: "Generate PowerShell completion script",
-	Long: `Generate PowerShell completion script for darrot.
-
-To load completion for the current session:
-  darrot completion powershell | Out-String | Invoke-Expression
-
-To install completion permanently, add the following line to your PowerShell profile:
-  darrot completion powershell >> $PROFILE
-
-You can check the location of your profile with:
-  echo $PROFILE
-
-You may need to restart PowerShell for this setup to take effect.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
-	},
-}
-
 func init() {
 	rootCmd.AddCommand(completionCmd)
 
@@ -157,5 +129,4 @@ func init() {
 	completionCmd.AddCommand(completionBashCmd)
 	completionCmd.AddCommand(completionZshCmd)
 	completionCmd.AddCommand(completionFishCmd)
-	completionCmd.AddCommand(completionPowershellCmd)
 }

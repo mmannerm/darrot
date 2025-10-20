@@ -349,8 +349,7 @@ The acceptance tests automatically detect and use your existing `.env` file if a
 # Test container build and functionality
 ./test-container.sh
 
-# Windows
-test-container.bat
+
 
 # Manual Podman test
 bash tests/container/acceptance_test.sh

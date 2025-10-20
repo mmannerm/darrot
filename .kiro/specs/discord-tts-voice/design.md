@@ -414,7 +414,7 @@ type ErrorRecovery interface {
 
 **Alternative Options**:
 - Amazon Polly: Similar features, AWS ecosystem integration
-- Microsoft Azure Speech Services: Good Windows integration
+- Microsoft Azure Speech Services: Cloud-based alternative
 - Local TTS engines: espeak, festival (lower quality, no external dependencies)
 
 ### Audio Processing Libraries

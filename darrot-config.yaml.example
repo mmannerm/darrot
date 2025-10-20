@@ -1,7 +1,7 @@
 # darrot Configuration File (YAML)
 # 
 # This is an example configuration file for the darrot Discord TTS bot.
-# Copy this file to darrot.yaml and customize the values for your setup.
+# Copy this file to darrot-config.yaml and customize the values for your setup.
 #
 # Configuration precedence (highest to lowest):
 # 1. CLI flags (--discord-token, --log-level, etc.)
@@ -58,7 +58,7 @@ cli:
   enable_colors: true
   
   # Default shell for completion generation
-  # Options: bash, zsh, powershell
+  # Options: bash, zsh, fish
   # Default: bash
   completion_shell: "bash"
 
