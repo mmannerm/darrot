@@ -17,7 +17,7 @@
 ## Development Environment
 - **Go Modules**: Dependency management with `go.mod` and `go.sum`
 - **Environment Variables**: Configuration via `.env` file (Discord tokens, Google Cloud credentials)
-- **Cross-platform**: Supports Windows, Linux, macOS
+- **Linux-focused**: Optimized for Linux deployment and development
 - **IDE Integration**: Optimized for development with proper module structure
 
 ## CI/CD Pipeline

@@ -43,8 +43,7 @@ go test ./internal/bot -v -run "TestIntegration"
 # Linux/macOS
 ./scripts/run-integration-tests.sh
 
-# Windows
-scripts\run-integration-tests.bat
+
 ```
 
 ## Integration Test Coverage

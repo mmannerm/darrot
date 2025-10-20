@@ -186,8 +186,7 @@ darrot provides a modern CLI interface with the following commands:
 # Generate zsh completion
 ./darrot completion zsh > ~/.zsh/completions/_darrot
 
-# Generate PowerShell completion
-./darrot completion powershell > darrot.ps1
+
 ```
 
 #### CLI Flags for Start Command
@@ -264,8 +263,7 @@ go test ./...
 # Linux/macOS
 ./scripts/run-integration-tests.sh
 
-# Windows
-scripts\run-integration-tests.bat
+
 ```
 
 For detailed testing information, see [docs/testing.md](docs/testing.md).
@@ -275,8 +273,7 @@ For detailed testing information, see [docs/testing.md](docs/testing.md).
 # Test container build and functionality
 ./test-container.sh
 
-# Windows
-test-container.bat
+
 
 # Manual Podman test
 bash tests/container/acceptance_test.sh

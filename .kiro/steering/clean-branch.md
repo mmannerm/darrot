@@ -80,7 +80,7 @@ go mod tidy          # Clean up dependencies
 - **GitHub Actions**: All workflows must pass before merge
 - **Automated Testing**: Includes unit, integration, and performance tests
 - **Semantic Releases**: Version bumping based on conventional commits
-- **Multi-platform Builds**: Verify compatibility across Windows, Linux, macOS
+- **Linux Builds**: Verify compatibility and deployment on Linux
 
 ## Quality Gates
 1. **All tests pass** with maintained coverage

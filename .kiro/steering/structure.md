@@ -88,5 +88,5 @@ internal/tts/
 
 ## CI/CD Integration
 - **GitHub Actions**: Automated testing and deployment workflows
-- **Multi-platform**: Build verification on Windows, Linux, macOS
+- **Linux-focused**: Build verification and deployment on Linux
 - **Quality Gates**: Automated testing, linting, and code coverage checks

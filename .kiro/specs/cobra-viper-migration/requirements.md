@@ -54,6 +54,6 @@ This feature involves migrating the darrot Discord TTS bot from basic Go flags a
 
 1. WHEN the user runs `darrot completion bash` THEN the system SHALL generate bash completion scripts
 2. WHEN the user runs `darrot completion zsh` THEN the system SHALL generate zsh completion scripts
-3. WHEN the user runs `darrot completion powershell` THEN the system SHALL generate PowerShell completion scripts
+3. WHEN the user runs `darrot completion fish` THEN the system SHALL generate fish completion scripts
 4. WHEN invalid arguments are provided THEN the system SHALL suggest similar valid commands or flags
 5. WHEN the system encounters errors THEN it SHALL provide actionable error messages with suggested solutions

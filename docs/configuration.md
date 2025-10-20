@@ -24,8 +24,7 @@ darrot automatically searches for configuration files in the following locations
 4. `~/.darrot-config.yaml` (user home directory)
 5. `~/.darrot-config.json` (user home directory)
 6. `~/.darrot-config.toml` (user home directory)
-7. `/etc/darrot/config.yaml` (system-wide, Linux/macOS)
-8. `%APPDATA%\darrot\config.yaml` (Windows)
+7. `/etc/darrot/config.yaml` (system-wide)
 
 #### Custom Configuration File
 You can specify a custom configuration file using the `--config` flag:

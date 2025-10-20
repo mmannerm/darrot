@@ -58,7 +58,7 @@ max_message_length = 500
 enable_colors = true
 
 # Default shell for completion generation
-# Options: bash, zsh, powershell
+# Options: bash, zsh, fish
 # Default: bash
 completion_shell = "bash"
 
