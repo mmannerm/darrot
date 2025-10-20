@@ -19,8 +19,10 @@ discord_token: "your_discord_bot_token_here"
 log_level: "INFO"
 
 # Google Cloud Text-to-Speech Configuration (Optional)
-# If not provided, the bot will use basic TTS functionality
-google_cloud_credentials_path: "/path/to/your/google-cloud-credentials.json"
+# Use standard Google Cloud authentication methods:
+# 1. Set GOOGLE_APPLICATION_CREDENTIALS environment variable
+# 2. Use 'gcloud auth application-default login' for development
+# No configuration file option needed - the Google Cloud SDK handles authentication
 
 # TTS Configuration
 tts:
@@ -75,7 +77,7 @@ cli:
 #   max_message_length: 1000
 
 # High-Quality TTS with Google Cloud
-# google_cloud_credentials_path: "/etc/darrot/gcp-credentials.json"
+# Set GOOGLE_APPLICATION_CREDENTIALS=/etc/darrot/gcp-credentials.json
 # tts:
 #   default_voice: "en-US-Neural2-A"
 #   default_speed: 1.1

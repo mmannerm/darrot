@@ -97,7 +97,11 @@ All environment variables must use the `DRT_` prefix. This change was made to su
 ### Core Configuration
 - `DRT_DISCORD_TOKEN` - Discord bot token (required)
 - `DRT_LOG_LEVEL` - Logging level (DEBUG, INFO, WARN, ERROR)
-- `DRT_GOOGLE_CLOUD_CREDENTIALS_PATH` - Path to Google Cloud credentials JSON
+
+### Google Cloud TTS Authentication (Optional)
+Use standard Google Cloud SDK authentication instead of configuration options:
+- `GOOGLE_APPLICATION_CREDENTIALS` - Path to service account JSON file
+- Or use `gcloud auth application-default login` for development
 
 ### TTS Configuration
 - `DRT_TTS_DEFAULT_VOICE` - Default TTS voice
@@ -124,7 +128,6 @@ All configuration options are available as CLI flags for the `start` command:
 --discord-token string              Discord bot token
 --config string                     Configuration file path
 --log-level string                  Log level (DEBUG, INFO, WARN, ERROR)
---google-cloud-credentials-path string    Google Cloud credentials JSON path
 ```
 
 ### TTS Flags
@@ -206,7 +209,6 @@ DRT_DISCORD_TOKEN=your_token ./darrot config create --output my-config.yaml
 | Option | Type | Default | Description | Environment Variable | CLI Flag |
 |--------|------|---------|-------------|---------------------|----------|
 | `log_level` | string | INFO | Logging level | `DRT_LOG_LEVEL` | `--log-level` |
-| `google_cloud_credentials_path` | string | - | Google Cloud credentials | `DRT_GOOGLE_CLOUD_CREDENTIALS_PATH` | `--google-cloud-credentials-path` |
 
 ### TTS Options
 
@@ -235,7 +237,7 @@ If you have existing environment variables without the `DRT_` prefix, you can mi
 # Automated migration script
 sed -i 's/^DISCORD_TOKEN=/DRT_DISCORD_TOKEN=/' .env
 sed -i 's/^LOG_LEVEL=/DRT_LOG_LEVEL=/' .env
-sed -i 's/^GOOGLE_CLOUD_CREDENTIALS_PATH=/DRT_GOOGLE_CLOUD_CREDENTIALS_PATH=/' .env
+
 sed -i 's/^TTS_/DRT_TTS_/' .env
 ```
 
@@ -249,6 +251,64 @@ Old command format:
 New command format:
 ```bash
 ./darrot start  # Use start subcommand
+```
+
+## Google Cloud TTS Authentication
+
+darrot uses the standard Google Cloud SDK authentication methods instead of configuration file options. This follows Google Cloud best practices and provides better security.
+
+### Authentication Methods
+
+#### Method 1: Service Account Key (Recommended for Production)
+```bash
+# Set the environment variable
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+./darrot start
+```
+
+#### Method 2: Application Default Credentials (Development)
+```bash
+# Authenticate with your Google account
+gcloud auth application-default login
+./darrot start
+```
+
+#### Method 3: Container/VM Metadata (Cloud Deployment)
+When running on Google Cloud Platform (GCE, GKE, Cloud Run, etc.), authentication is automatic through metadata service.
+
+### Setup Instructions
+
+1. **Enable the Text-to-Speech API**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Enable the [Text-to-Speech API](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com)
+
+2. **Create Service Account (for production)**
+   ```bash
+   # Create service account
+   gcloud iam service-accounts create darrot-tts \
+     --description="Service account for darrot TTS bot" \
+     --display-name="Darrot TTS"
+   
+   # Grant Text-to-Speech permissions
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+     --member="serviceAccount:darrot-tts@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+     --role="roles/cloudtts.user"
+   
+   # Create and download key
+   gcloud iam service-accounts keys create darrot-tts-key.json \
+     --iam-account=darrot-tts@YOUR_PROJECT_ID.iam.gserviceaccount.com
+   ```
+
+3. **Set Authentication**
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/darrot-tts-key.json
+   ```
+
+### Container Deployment
+```dockerfile
+# In your Dockerfile or container environment
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+COPY gcp-key.json /app/credentials/gcp-key.json
 ```
 
 ## Configuration Examples
@@ -273,7 +333,6 @@ cli:
 # darrot-prod.yaml
 discord_token: "prod_bot_token"
 log_level: "WARN"
-google_cloud_credentials_path: "/etc/darrot/gcp-credentials.json"
 
 tts:
   default_voice: "en-US-Neural2-A"
@@ -281,6 +340,12 @@ tts:
   max_message_length: 1000
   default_speed: 1.0
   default_volume: 0.9
+```
+
+```bash
+# Set Google Cloud authentication
+export GOOGLE_APPLICATION_CREDENTIALS=/etc/darrot/gcp-credentials.json
+./darrot start --config darrot-prod.yaml
 ```
 
 ### High-Performance Setup

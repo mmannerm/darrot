@@ -7,7 +7,7 @@
   
   "log_level": "INFO",
   
-  "google_cloud_credentials_path": "/path/to/your/google-cloud-credentials.json",
+
   
   "tts": {
     "default_voice": "en-US-Standard-A",
@@ -38,7 +38,7 @@
       }
     },
     "_high_quality_tts": {
-      "google_cloud_credentials_path": "/etc/darrot/gcp-credentials.json",
+      "_note": "Set GOOGLE_APPLICATION_CREDENTIALS=/etc/darrot/gcp-credentials.json",
       "tts": {
         "default_voice": "en-US-Neural2-A",
         "default_speed": 1.1,
@@ -60,11 +60,7 @@
       "description": "Logging level for the application",
       "env_var": "DRT_LOG_LEVEL"
     },
-    "google_cloud_credentials_path": {
-      "required": false,
-      "description": "Path to Google Cloud service account JSON file for enhanced TTS",
-      "env_var": "DRT_GOOGLE_CLOUD_CREDENTIALS_PATH"
-    },
+
     "tts.default_voice": {
       "required": false,
       "default": "en-US-Standard-A",

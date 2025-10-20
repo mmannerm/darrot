@@ -207,8 +207,9 @@ darrot provides a modern CLI interface with the following commands:
 ./darrot start --tts-max-queue-size 15
 ./darrot start --tts-max-message-length 600
 
-# Google Cloud TTS (optional)
-./darrot start --google-cloud-credentials-path /path/to/credentials.json
+# Google Cloud TTS (optional) - use standard Google Cloud authentication
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+./darrot start
 ```
 
 ### Discord Bot Commands
@@ -390,7 +391,7 @@ DRT_TTS_DEFAULT_VOICE=en-US-Standard-A
 # Quick migration for existing .env files
 sed -i 's/^DISCORD_TOKEN=/DRT_DISCORD_TOKEN=/' .env
 sed -i 's/^LOG_LEVEL=/DRT_LOG_LEVEL=/' .env
-sed -i 's/^GOOGLE_CLOUD_CREDENTIALS_PATH=/DRT_GOOGLE_CLOUD_CREDENTIALS_PATH=/' .env
+
 sed -i 's/^TTS_/DRT_TTS_/' .env
 ```
 
@@ -414,7 +415,6 @@ sed -i 's/^TTS_/DRT_TTS_/' .env
 |----------|----------|---------|-------------|
 | `DRT_DISCORD_TOKEN` | Yes | - | Discord bot token from Developer Portal |
 | `DRT_LOG_LEVEL` | No | INFO | Logging level (DEBUG, INFO, WARN, ERROR) |
-| `DRT_GOOGLE_CLOUD_CREDENTIALS_PATH` | No | - | Path to Google Cloud service account JSON |
 | `DRT_TTS_DEFAULT_VOICE` | No | en-US-Standard-A | Default TTS voice selection |
 | `DRT_TTS_DEFAULT_SPEED` | No | 1.0 | Speech speed (0.25-4.0) |
 | `DRT_TTS_DEFAULT_VOLUME` | No | 1.0 | Speech volume (0.0-2.0) |
@@ -431,7 +431,6 @@ discord_token: "your_bot_token_here"
 log_level: "INFO"
 
 tts:
-  google_cloud_credentials_path: "/path/to/credentials.json"
   default_voice: "en-US-Standard-A"
   default_speed: 1.0
   default_volume: 1.0
@@ -454,7 +453,6 @@ All configuration options are available as CLI flags:
 --log-level string                  Log level (DEBUG, INFO, WARN, ERROR)
 
 # TTS flags
---google-cloud-credentials-path string    Google Cloud credentials JSON path
 --tts-default-voice string               Default TTS voice
 --tts-default-speed float                Speech speed (0.25-4.0)
 --tts-default-volume float               Speech volume (0.0-2.0)
@@ -464,10 +462,34 @@ All configuration options are available as CLI flags:
 
 ### Google Cloud TTS Setup (Optional)
 
-1. Create a Google Cloud project and enable the Text-to-Speech API
-2. Create a service account and download the JSON credentials
-3. Set `GOOGLE_CLOUD_CREDENTIALS_PATH` to the credentials file path
-4. The bot will use enhanced neural voices when configured
+For enhanced neural voices and better TTS quality, configure Google Cloud Text-to-Speech:
+
+1. **Create a Google Cloud project and enable the Text-to-Speech API**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable the [Text-to-Speech API](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com)
+
+2. **Set up authentication using one of these methods:**
+
+   **Option A: Service Account (Recommended for production)**
+   ```bash
+   # Create service account and download JSON key
+   # Set the environment variable
+   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account-key.json
+   ./darrot start
+   ```
+
+   **Option B: Application Default Credentials (For development)**
+   ```bash
+   # Install Google Cloud CLI and authenticate
+   gcloud auth application-default login
+   ./darrot start
+   ```
+
+3. **The bot will automatically use Google Cloud TTS when credentials are available**
+   - Enhanced neural voices (e.g., en-US-Neural2-A, en-US-Neural2-C)
+   - Better audio quality and more natural speech
+   - Supports multiple languages and voice styles
 
 ## Performance
 
