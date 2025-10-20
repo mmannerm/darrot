@@ -1,7 +1,7 @@
 # darrot Configuration File (TOML)
 #
 # This is an example configuration file for the darrot Discord TTS bot.
-# Copy this file to darrot.toml and customize the values for your setup.
+# Copy this file to darrot-config.toml and customize the values for your setup.
 #
 # Configuration precedence (highest to lowest):
 # 1. CLI flags (--discord-token, --log-level, etc.)

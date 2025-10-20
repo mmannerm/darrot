@@ -8,7 +8,7 @@ param(
 # Test configuration
 $ContainerName = "darrot-test-$(Get-Date -Format 'yyyyMMddHHmmss')"
 $ImageName = "darrot:test"
-$TestEnvFile = "tests/container/test.env"
+$TestConfigFile = "tests/container/test.yaml"
 
 # Colors for output
 $Red = "`e[31m"
@@ -102,27 +102,28 @@ function Test-ContainerStartup {
     Write-Host "${Yellow}Test 3: Testing container startup...${Reset}"
     
     try {
-        # Check if project .env file exists
-        $envFileArg = ""
-        if (Test-Path ".env") {
-            Write-Host "${Green}✓ Using existing .env file from project root${Reset}"
-            $envFileArg = "--env-file .env"
+        # Check if project configuration file exists
+        $configArg = ""
+        if (Test-Path "darrot-config.yaml") {
+            Write-Host "${Green}✓ Using existing darrot-config.yaml file from project root${Reset}"
+            $configArg = "-v ./darrot-config.yaml:/app/darrot-config.yaml:ro"
         }
         else {
-            # Create minimal test environment file
-            $testEnvDir = Split-Path $TestEnvFile -Parent
-            if (!(Test-Path $testEnvDir)) {
-                New-Item -ItemType Directory -Path $testEnvDir -Force | Out-Null
+            # Create minimal test configuration file
+            $testConfigDir = Split-Path $TestConfigFile -Parent
+            if (!(Test-Path $testConfigDir)) {
+                New-Item -ItemType Directory -Path $testConfigDir -Force | Out-Null
             }
             
             @"
-DISCORD_TOKEN=test_token_for_validation
-LOG_LEVEL=DEBUG
-TTS_DEFAULT_VOICE=en-US-Standard-A
-"@ | Out-File -FilePath $TestEnvFile -Encoding UTF8
+discord_token: "test_token_for_validation"
+log_level: "DEBUG"
+tts:
+  default_voice: "en-US-Standard-A"
+"@ | Out-File -FilePath $TestConfigFile -Encoding UTF8
             
-            Write-Host "${Yellow}⚠ No .env file found, using test configuration${Reset}"
-            $envFileArg = "--env-file $TestEnvFile"
+            Write-Host "${Yellow}⚠ No darrot-config.yaml file found, using test configuration${Reset}"
+            $configArg = "-v $TestConfigFile:/app/darrot-config.yaml:ro"
         }
         
         # Add Google Cloud credentials from host environment if available
@@ -137,7 +138,7 @@ TTS_DEFAULT_VOICE=en-US-Standard-A
         }
         
         # Start container with configuration
-        $cmdArgs = @("run", "-d", "--name", $ContainerName) + $envFileArg.Split(" ") + $extraEnvArgs.Split(" ") + @($ImageName)
+        $cmdArgs = @("run", "-d", "--name", $ContainerName) + $configArg.Split(" ") + $extraEnvArgs.Split(" ") + @($ImageName)
         $result = & podman $cmdArgs 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-Host "${Red}✗ Container failed to start${Reset}"

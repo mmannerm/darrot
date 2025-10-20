@@ -28,7 +28,7 @@ go mod tidy          # Clean up dependencies
 ## File Management Rules
 
 ### Never Commit
-- `.env` - Contains sensitive tokens/keys
+- `darrot-config.yaml`, `darrot-config.json`, `darrot-config.toml` - May contain sensitive tokens/keys
 - `data/` directory - Runtime user configurations
 - Compiled binaries (`darrot.exe`, `darrot`)
 - Coverage reports (`coverage.out`, `coverage.html`)
@@ -36,7 +36,7 @@ go mod tidy          # Clean up dependencies
 ### Always Include
 - Test files (`*_test.go`) for all new functionality
 - Documentation updates for feature changes
-- `.env.example` updates for new configuration options
+- Configuration example updates for new options
 
 ## Go Code Standards
 

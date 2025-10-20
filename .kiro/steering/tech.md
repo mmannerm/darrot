@@ -66,7 +66,7 @@ darrot/
 │   ├── config/         # Configuration management
 │   └── tts/            # TTS system implementation
 ├── .kiro/              # Kiro AI assistant configuration
-├── .env.example        # Example environment configuration
+├── darrot-config.yaml.example # Example YAML configuration
 ├── go.mod              # Go module definition
 └── go.sum              # Go module checksums
 ```

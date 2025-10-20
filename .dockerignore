@@ -13,10 +13,11 @@ docs/
 *.swo
 *~
 
-# Environment and configuration
-.env
-.env.local
-.env.test
+# Configuration files (may contain sensitive data)
+darrot-config.yaml
+darrot-config.json
+darrot-config.toml
+*.env
 
 # Build artifacts
 darrot

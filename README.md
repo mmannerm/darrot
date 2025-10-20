@@ -66,10 +66,10 @@ Create a configuration file in YAML, JSON, or TOML format:
 
 ```bash
 # Generate a sample configuration file
-./darrot config create --output darrot.yaml
+./darrot config create --output darrot-config.yaml
 
 # Or create manually
-cat > darrot.yaml << EOF
+cat > darrot-config.yaml << EOF
 discord_token: "your_bot_token_here"
 log_level: "INFO"
 tts:
@@ -106,9 +106,9 @@ The easiest way to run darrot is using containers with Podman or Docker:
 ```bash
 # Quick start with Podman
 # Create configuration file or set environment variables
-echo 'discord_token: "your_bot_token_here"' > darrot.yaml
+echo 'discord_token: "your_bot_token_here"' > darrot-config.yaml
 podman build --pull -t darrot:latest .
-podman run -d --name darrot-bot -v ./darrot.yaml:/app/darrot.yaml:ro -v ./data:/app/data:Z darrot:latest
+podman run -d --name darrot-bot -v ./darrot-config.yaml:/app/darrot-config.yaml:ro -v ./data:/app/data:Z darrot:latest
 ```
 
 **Container Features:**
@@ -229,9 +229,9 @@ Once the bot is running and invited to your server:
    ./darrot start
    
    # Option 2: Use configuration file
-   ./darrot config create --output darrot.yaml
-   # Edit darrot.yaml with your settings
-   ./darrot start --config darrot.yaml
+   ./darrot config create --output darrot-config.yaml
+   # Edit darrot-config.yaml with your settings
+   ./darrot start --config darrot-config.yaml
    
    # Option 3: Use CLI flags
    ./darrot start --discord-token "your_token" --log-level INFO
@@ -328,10 +328,10 @@ podman logs darrot-bot
 podman exec darrot-bot env | grep DRT_
 
 # Test configuration validation
-podman run --rm -v ./darrot.yaml:/app/darrot.yaml:ro darrot:latest config validate
+podman run --rm -v ./darrot-config.yaml:/app/darrot-config.yaml:ro darrot:latest config validate
 
 # Test with debug logging
-podman run -d --name darrot-debug -v ./darrot.yaml:/app/darrot.yaml:ro -e DRT_LOG_LEVEL=DEBUG darrot:latest
+podman run -d --name darrot-debug -v ./darrot-config.yaml:/app/darrot-config.yaml:ro -e DRT_LOG_LEVEL=DEBUG darrot:latest
 ```
 
 **Permission errors with container volumes:**
@@ -394,7 +394,7 @@ export DRT_DISCORD_TOKEN="$DISCORD_TOKEN"
 export DRT_LOG_LEVEL="$LOG_LEVEL"
 
 # Option 2: Create a configuration file
-./darrot config create --output darrot.yaml
+./darrot config create --output darrot-config.yaml
 ```
 
 ### Command Changes
@@ -428,7 +428,7 @@ export DRT_LOG_LEVEL="$LOG_LEVEL"
 Configuration files support nested structure for better organization:
 
 ```yaml
-# darrot.yaml example
+# darrot-config.yaml example
 discord_token: "your_bot_token_here"
 log_level: "INFO"
 

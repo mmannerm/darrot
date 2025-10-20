@@ -18,12 +18,12 @@ darrot supports multiple configuration methods with the following precedence ord
 darrot automatically searches for configuration files in the following locations and formats:
 
 #### Search Locations
-1. `./darrot.yaml` (current directory)
-2. `./darrot.json` (current directory)
-3. `./darrot.toml` (current directory)
-4. `~/.darrot.yaml` (user home directory)
-5. `~/.darrot.json` (user home directory)
-6. `~/.darrot.toml` (user home directory)
+1. `./darrot-config.yaml` (current directory)
+2. `./darrot-config.json` (current directory)
+3. `./darrot-config.toml` (current directory)
+4. `~/.darrot-config.yaml` (user home directory)
+5. `~/.darrot-config.json` (user home directory)
+6. `~/.darrot-config.toml` (user home directory)
 7. `/etc/darrot/config.yaml` (system-wide, Linux/macOS)
 8. `%APPDATA%\darrot\config.yaml` (Windows)
 
@@ -38,7 +38,7 @@ You can specify a custom configuration file using the `--config` flag:
 
 #### YAML Format (Recommended)
 ```yaml
-# darrot.yaml
+# darrot-config.yaml
 discord_token: "your_bot_token_here"
 log_level: "INFO"
 
@@ -110,13 +110,13 @@ Use standard Google Cloud SDK authentication instead of configuration options:
 - `DRT_TTS_MAX_QUEUE_SIZE` - Maximum queue size (1-100)
 - `DRT_TTS_MAX_MESSAGE_LENGTH` - Maximum message length (1-2000)
 
-### Example .env File
+### Example Environment Variables
 ```bash
-# .env
-DRT_DISCORD_TOKEN=your_bot_token_here
-DRT_LOG_LEVEL=INFO
-DRT_TTS_DEFAULT_VOICE=en-US-Standard-A
-DRT_TTS_DEFAULT_SPEED=1.0
+# Set environment variables directly
+export DRT_DISCORD_TOKEN=your_bot_token_here
+export DRT_LOG_LEVEL=INFO
+export DRT_TTS_DEFAULT_VOICE=en-US-Standard-A
+export DRT_TTS_DEFAULT_SPEED=1.0
 ```
 
 ## CLI Flags
@@ -145,10 +145,10 @@ All configuration options are available as CLI flags for the `start` command:
 ./darrot start --discord-token "your_token" --log-level DEBUG
 
 # Start with configuration file
-./darrot start --config darrot.yaml
+./darrot start --config darrot-config.yaml
 
 # Mix configuration file with CLI overrides
-./darrot start --config darrot.yaml --log-level DEBUG --tts-default-speed 1.2
+./darrot start --config darrot-config.yaml --log-level DEBUG --tts-default-speed 1.2
 ```
 
 ## Configuration Management Commands
@@ -186,7 +186,7 @@ This command shows:
 Generate a configuration file from current settings:
 
 ```bash
-# Create in default location (darrot.yaml)
+# Create in default location (darrot-config.yaml)
 ./darrot config create
 
 # Create in specific location
@@ -234,11 +234,13 @@ DRT_DISCORD_TOKEN=your_token ./darrot config create --output my-config.yaml
 If you have existing environment variables without the `DRT_` prefix, you can migrate them:
 
 ```bash
-# Automated migration script
-sed -i 's/^DISCORD_TOKEN=/DRT_DISCORD_TOKEN=/' .env
-sed -i 's/^LOG_LEVEL=/DRT_LOG_LEVEL=/' .env
+# Migration from old environment variables
+# Option 1: Set new environment variables
+export DRT_DISCORD_TOKEN="$DISCORD_TOKEN"
+export DRT_LOG_LEVEL="$LOG_LEVEL"
 
-sed -i 's/^TTS_/DRT_TTS_/' .env
+# Option 2: Create configuration file from environment
+./darrot config create --output darrot-config.yaml
 ```
 
 ### Command Migration
@@ -419,7 +421,7 @@ This will show:
 1. **Use environment variables for sensitive data**:
    ```bash
    export DRT_DISCORD_TOKEN="your_secret_token"
-   ./darrot start --config darrot.yaml
+   ./darrot start --config darrot-config.yaml
    ```
 
 2. **Separate configuration by environment**:
@@ -435,7 +437,7 @@ This will show:
 
 4. **Use configuration files for non-sensitive settings**:
    ```yaml
-   # darrot.yaml (safe to commit)
+   # darrot-config.yaml (safe to commit)
    log_level: "INFO"
    tts:
      default_voice: "en-US-Standard-A"

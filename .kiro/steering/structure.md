@@ -34,8 +34,9 @@ darrot/
 │       ├── voice_manager.go        # Discord voice connections
 │       └── *_test.go              # Comprehensive test suite
 ├── data/                   # Runtime data storage (gitignored)
-├── .env                    # Environment configuration (gitignored)
-├── .env.example           # Example environment configuration
+├── darrot-config.yaml.example    # Example YAML configuration
+├── darrot-config.json.example    # Example JSON configuration
+├── darrot-config.toml.example    # Example TOML configuration
 ├── .gitignore             # Git ignore patterns
 ├── go.mod                 # Go module definition
 ├── go.sum                 # Go module checksums
