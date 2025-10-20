@@ -1,0 +1,125 @@
+# darrot Configuration File (TOML)
+#
+# This is an example configuration file for the darrot Discord TTS bot.
+# Copy this file to darrot.toml and customize the values for your setup.
+#
+# Configuration precedence (highest to lowest):
+# 1. CLI flags (--discord-token, --log-level, etc.)
+# 2. Environment variables (DRT_DISCORD_TOKEN, DRT_LOG_LEVEL, etc.)
+# 3. Configuration file (this file)
+# 4. Default values
+
+# Discord Configuration
+# Required: Your Discord bot token from the Developer Portal
+discord_token = "your_discord_bot_token_here"
+
+# Logging Configuration
+# Options: DEBUG, INFO, WARN, ERROR
+# Default: INFO
+log_level = "INFO"
+
+# Google Cloud Text-to-Speech Configuration (Optional)
+# If not provided, the bot will use basic TTS functionality
+google_cloud_credentials_path = "/path/to/your/google-cloud-credentials.json"
+
+# TTS Configuration
+[tts]
+# Default voice for text-to-speech
+# Examples: en-US-Standard-A, en-US-Neural2-A, en-GB-Standard-B
+# Default: en-US-Standard-A
+default_voice = "en-US-Standard-A"
+
+# Speech speed multiplier
+# Range: 0.25 to 4.0
+# Default: 1.0
+default_speed = 1.0
+
+# Speech volume multiplier
+# Range: 0.0 to 2.0
+# Default: 1.0
+default_volume = 1.0
+
+# Maximum number of messages in the TTS queue
+# Range: 1 to 100
+# Default: 10
+max_queue_size = 10
+
+# Maximum length of a single message for TTS processing
+# Range: 1 to 2000 characters
+# Default: 500
+max_message_length = 500
+
+# CLI Configuration (Optional)
+[cli]
+# Enable colored output in terminal
+# Default: true
+enable_colors = true
+
+# Default shell for completion generation
+# Options: bash, zsh, powershell
+# Default: bash
+completion_shell = "bash"
+
+# Example configurations for different environments:
+
+# Development Environment
+# [development]
+# log_level = "DEBUG"
+# [development.tts]
+# max_queue_size = 5
+# max_message_length = 200
+
+# Production Environment
+# [production]
+# log_level = "WARN"
+# [production.tts]
+# max_queue_size = 20
+# max_message_length = 1000
+
+# High-Quality TTS with Google Cloud
+# [high_quality]
+# google_cloud_credentials_path = "/etc/darrot/gcp-credentials.json"
+# [high_quality.tts]
+# default_voice = "en-US-Neural2-A"
+# default_speed = 1.1
+# default_volume = 0.9
+
+# Configuration Options Reference:
+#
+# discord_token (required)
+#   Description: Your Discord bot token from the Developer Portal
+#   Environment Variable: DRT_DISCORD_TOKEN
+#
+# log_level (optional, default: INFO)
+#   Description: Logging level for the application
+#   Options: DEBUG, INFO, WARN, ERROR
+#   Environment Variable: DRT_LOG_LEVEL
+#
+# google_cloud_credentials_path (optional)
+#   Description: Path to Google Cloud service account JSON file for enhanced TTS
+#   Environment Variable: DRT_GOOGLE_CLOUD_CREDENTIALS_PATH
+#
+# tts.default_voice (optional, default: en-US-Standard-A)
+#   Description: Default voice for text-to-speech
+#   Examples: en-US-Standard-A, en-US-Neural2-A, en-GB-Standard-B
+#   Environment Variable: DRT_TTS_DEFAULT_VOICE
+#
+# tts.default_speed (optional, default: 1.0)
+#   Description: Speech speed multiplier
+#   Range: 0.25 to 4.0
+#   Environment Variable: DRT_TTS_DEFAULT_SPEED
+#
+# tts.default_volume (optional, default: 1.0)
+#   Description: Speech volume multiplier
+#   Range: 0.0 to 2.0
+#   Environment Variable: DRT_TTS_DEFAULT_VOLUME
+#
+# tts.max_queue_size (optional, default: 10)
+#   Description: Maximum number of messages in the TTS queue
+#   Range: 1 to 100
+#   Environment Variable: DRT_TTS_MAX_QUEUE_SIZE
+#
+# tts.max_message_length (optional, default: 500)
+#   Description: Maximum length of a single message for TTS processing
+#   Range: 1 to 2000 characters
+#   Environment Variable: DRT_TTS_MAX_MESSAGE_LENGTH

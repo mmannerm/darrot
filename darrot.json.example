@@ -1,0 +1,103 @@
+{
+  "_comment": "darrot Configuration File (JSON)",
+  "_description": "This is an example configuration file for the darrot Discord TTS bot. Copy this file to darrot.json and customize the values for your setup.",
+  "_precedence": "Configuration precedence (highest to lowest): 1. CLI flags, 2. Environment variables (DRT_ prefix), 3. Configuration file, 4. Default values",
+  
+  "discord_token": "your_discord_bot_token_here",
+  
+  "log_level": "INFO",
+  
+  "google_cloud_credentials_path": "/path/to/your/google-cloud-credentials.json",
+  
+  "tts": {
+    "default_voice": "en-US-Standard-A",
+    "default_speed": 1.0,
+    "default_volume": 1.0,
+    "max_queue_size": 10,
+    "max_message_length": 500
+  },
+  
+  "cli": {
+    "enable_colors": true,
+    "completion_shell": "bash"
+  },
+  
+  "_examples": {
+    "_development": {
+      "log_level": "DEBUG",
+      "tts": {
+        "max_queue_size": 5,
+        "max_message_length": 200
+      }
+    },
+    "_production": {
+      "log_level": "WARN",
+      "tts": {
+        "max_queue_size": 20,
+        "max_message_length": 1000
+      }
+    },
+    "_high_quality_tts": {
+      "google_cloud_credentials_path": "/etc/darrot/gcp-credentials.json",
+      "tts": {
+        "default_voice": "en-US-Neural2-A",
+        "default_speed": 1.1,
+        "default_volume": 0.9
+      }
+    }
+  },
+  
+  "_configuration_options": {
+    "discord_token": {
+      "required": true,
+      "description": "Your Discord bot token from the Developer Portal",
+      "env_var": "DRT_DISCORD_TOKEN"
+    },
+    "log_level": {
+      "required": false,
+      "default": "INFO",
+      "options": ["DEBUG", "INFO", "WARN", "ERROR"],
+      "description": "Logging level for the application",
+      "env_var": "DRT_LOG_LEVEL"
+    },
+    "google_cloud_credentials_path": {
+      "required": false,
+      "description": "Path to Google Cloud service account JSON file for enhanced TTS",
+      "env_var": "DRT_GOOGLE_CLOUD_CREDENTIALS_PATH"
+    },
+    "tts.default_voice": {
+      "required": false,
+      "default": "en-US-Standard-A",
+      "description": "Default voice for text-to-speech (e.g., en-US-Standard-A, en-US-Neural2-A)",
+      "env_var": "DRT_TTS_DEFAULT_VOICE"
+    },
+    "tts.default_speed": {
+      "required": false,
+      "default": 1.0,
+      "range": "0.25 to 4.0",
+      "description": "Speech speed multiplier",
+      "env_var": "DRT_TTS_DEFAULT_SPEED"
+    },
+    "tts.default_volume": {
+      "required": false,
+      "default": 1.0,
+      "range": "0.0 to 2.0",
+      "description": "Speech volume multiplier",
+      "env_var": "DRT_TTS_DEFAULT_VOLUME"
+    },
+    "tts.max_queue_size": {
+      "required": false,
+      "default": 10,
+      "range": "1 to 100",
+      "description": "Maximum number of messages in the TTS queue",
+      "env_var": "DRT_TTS_MAX_QUEUE_SIZE"
+    },
+    "tts.max_message_length": {
+      "required": false,
+      "default": 500,
+      "range": "1 to 2000",
+      "description": "Maximum length of a single message for TTS processing",
+      "env_var": "DRT_TTS_MAX_MESSAGE_LENGTH"
+    }
+  }
+}

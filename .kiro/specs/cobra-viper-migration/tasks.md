@@ -135,11 +135,20 @@
     - Implement completion commands for all shells
     - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 6. Update main application integration
-  - [ ] 6.1 Refactor main.go to use Cobra commands
+- [x] 6. Update main application integration
+
+
+
+
+
+  - [x] 6.1 Refactor main.go to use Cobra commands
+
+
     - Replace current flag parsing with Cobra command execution
     - Maintain all existing functionality through start command
     - _Requirements: 1.3, 4.3_
+
+
 
   - [ ] 6.2 Update configuration loading in bot initialization
     - Modify bot initialization to use new Viper-based configuration
@@ -167,13 +176,22 @@
     - Test environment variable precedence and mapping
     - _Requirements: 2.2, 2.6_
 
-- [ ] 8. Update documentation and examples
-  - [ ] 8.1 Update README with new CLI usage
+- [x] 8. Update documentation and examples
+
+
+
+
+
+  - [x] 8.1 Update README with new CLI usage
+
+
     - Document all new commands and configuration options
     - Provide migration guide for new DRT_ environment variable prefix
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ] 8.2 Create example configuration files
+  - [x] 8.2 Create example configuration files
+
+
     - Provide sample YAML, JSON, and TOML configuration files
     - Document all configuration options with examples
     - _Requirements: 2.1, 3.4, 3.5_
