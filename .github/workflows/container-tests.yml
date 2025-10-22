@@ -15,15 +15,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install Podman
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y podman
-        podman --version
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     
-    - name: Build container image with Podman
+    - name: Build container image with Docker
       run: |
-        podman build -t darrot:test .
+        docker build -t darrot:test .
     
     - name: Install container-structure-test
       run: |
@@ -86,15 +83,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install Podman
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y podman
-        podman --version
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     
-    - name: Build container image with Podman
+    - name: Build container image with Docker
       run: |
-        podman build -t darrot:test .
+        docker build -t darrot:test .
     
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
