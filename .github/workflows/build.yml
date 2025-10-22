@@ -75,6 +75,9 @@ jobs:
         version: v2.5.0
         args: --timeout=5m --max-issues-per-linter=5 --max-same-issues=3 --verbose
 
+  container-tests:
+    uses: ./.github/workflows/container-tests.yml
+
   build:
     runs-on: ubuntu-latest
     needs: [test, lint]

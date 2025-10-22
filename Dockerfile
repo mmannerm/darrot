@@ -47,6 +47,9 @@ RUN mkdir -p /app/data && \
 # Copy binary from builder stage
 COPY --from=builder /app/darrot /app/darrot
 
+# Fix binary ownership
+RUN chown darrot:darrot /app/darrot
+
 # Switch to non-root user
 USER darrot
 

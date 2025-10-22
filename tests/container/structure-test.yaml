@@ -1,0 +1,80 @@
+schemaVersion: 2.0.0
+
+# Command tests to validate binary functionality and dependencies
+commandTests:
+  - name: "darrot binary exists and is executable"
+    command: "/app/darrot"
+    args: ["version"]
+    expectedOutput: ["darrot"]
+    exitCode: 0
+
+  - name: "opus libraries are available"
+    command: "ls"
+    args: ["/usr/lib/libopus.so.0"]
+    exitCode: 0
+
+  - name: "opusfile libraries are available"
+    command: "ls"
+    args: ["/usr/lib/libopusfile.so.0"]
+    exitCode: 0
+
+  - name: "ca-certificates are installed"
+    command: "ls"
+    args: ["/etc/ssl/certs/ca-certificates.crt"]
+    exitCode: 0
+
+  - name: "timezone data is available"
+    command: "ls"
+    args: ["/usr/share/zoneinfo"]
+    exitCode: 0
+
+  - name: "non-root user can access application directory"
+    command: "ls"
+    args: ["-la", "/app"]
+    exitCode: 0
+
+# File existence tests to validate container structure
+fileExistenceTests:
+  - name: "application binary"
+    path: "/app/darrot"
+    shouldExist: true
+    permissions: "-rwxr-xr-x"
+    uid: 1001
+    gid: 1001
+
+  - name: "data directory exists"
+    path: "/app/data"
+    shouldExist: true
+    uid: 1001
+    gid: 1001
+
+  - name: "ca-certificates bundle"
+    path: "/etc/ssl/certs/ca-certificates.crt"
+    shouldExist: true
+
+  - name: "opus library"
+    path: "/usr/lib/libopus.so.0"
+    shouldExist: true
+
+  - name: "opusfile library"
+    path: "/usr/lib/libopusfile.so.0"
+    shouldExist: true
+
+# Metadata tests to validate container configuration
+metadataTest:
+  # Verify container runs as non-root user
+  user: "darrot"
+  
+  # Verify working directory
+  workdir: "/app"
+  
+  # Verify exposed ports (health check port)
+  exposedPorts: ["8080"]
+  
+  # Verify entrypoint
+  entrypoint: ["/app/darrot"]
+
+# License tests to ensure compliance
+licenseTests:
+  - debian: false
+    files: []
