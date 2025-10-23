@@ -23,29 +23,29 @@ services:
     networks:
       - test-network
 
-  # Acceptance test runner
-  acceptance-tests:
-    build:
-      context: ../../..
-      dockerfile: tests/acceptance/Dockerfile
-    container_name: acceptance-test-runner
-    depends_on:
-      mock-discord:
-        condition: service_healthy
-    environment:
-      - MOCK_DISCORD_API_URL=http://mock-discord:8080/api/v10
-      - MOCK_DISCORD_GATEWAY_URL=ws://mock-discord:8080/gateway
-      - MOCK_DISCORD_VOICE_URL=mock-discord:8081
-      - TEST_TIMEOUT=300s
-      - TEST_PARALLEL=4
-    volumes:
-      - ../results:/app/test-results
-      - ../audio-samples:/app/audio-samples
-    networks:
-      - test-network
-    profiles:
-      - testing
-    command: ["go", "test", "./tests/acceptance/...", "-v", "-timeout=300s"]
+  # Acceptance test runner (placeholder for future implementation)
+  # acceptance-tests:
+  #   build:
+  #     context: ../../..
+  #     dockerfile: tests/acceptance/Dockerfile
+  #   container_name: acceptance-test-runner
+  #   depends_on:
+  #     mock-discord:
+  #       condition: service_healthy
+  #   environment:
+  #     - MOCK_DISCORD_API_URL=http://mock-discord:8080/api/v10
+  #     - MOCK_DISCORD_GATEWAY_URL=ws://mock-discord:8080/gateway
+  #     - MOCK_DISCORD_VOICE_URL=mock-discord:8081
+  #     - TEST_TIMEOUT=300s
+  #     - TEST_PARALLEL=4
+  #   volumes:
+  #     - ../results:/app/test-results
+  #     - ../audio-samples:/app/audio-samples
+  #   networks:
+  #     - test-network
+  #   profiles:
+  #     - testing
+  #   command: ["go", "test", "./tests/acceptance/...", "-v", "-timeout=300s"]
 
 networks:
   test-network:
