@@ -26,21 +26,27 @@ make build
 ./mock-discord
 ```
 
-### Docker Deployment
+### Container Deployment
+
+The Makefile automatically detects and uses available container runtime (Podman or Docker):
 
 ```bash
-# Build and run with Docker Compose
-make docker-build
+# Build and run with container runtime
+make container-build
+make container-run
+
+# Or use aliases
+make docker-build  # Works with both podman and docker
 make docker-run
 
 # Check status
 make status
 
 # View logs
-make docker-logs
+make container-logs
 
 # Stop
-make docker-stop
+make container-stop
 ```
 
 ### Testing Environment
@@ -168,8 +174,17 @@ make ci-test
 
 # Cleanup
 make clean
-make clean-docker
+make clean-containers
 ```
+
+## Container Runtime Support
+
+The project supports both Podman and Docker:
+
+- **Local Development**: Prefers Podman if available, falls back to Docker
+- **CI/CD**: Uses Docker in GitHub Actions
+- **Commands**: All container commands work with both runtimes
+- **Detection**: Automatic runtime detection in Makefile
 
 ## Integration with darrot
 
