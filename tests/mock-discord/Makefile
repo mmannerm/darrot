@@ -1,0 +1,121 @@
+# Mock Discord API Server Makefile
+
+.PHONY: help build run stop clean test logs health deps
+
+# Container runtime detection (prefer podman for local dev, docker for CI)
+CONTAINER_RUNTIME := $(shell command -v podman 2> /dev/null)
+ifndef CONTAINER_RUNTIME
+    CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null)
+endif
+ifndef CONTAINER_RUNTIME
+    $(error Neither podman nor docker found. Please install one of them.)
+endif
+
+# Compose command detection with fallbacks
+COMPOSE_CMD := $(shell command -v podman-compose 2> /dev/null)
+ifndef COMPOSE_CMD
+    COMPOSE_CMD := $(shell command -v docker-compose 2> /dev/null)
+endif
+ifndef COMPOSE_CMD
+    # Try native compose support
+    ifeq ($(shell $(CONTAINER_RUNTIME) compose version >/dev/null 2>&1 && echo "yes"),yes)
+        COMPOSE_CMD := $(CONTAINER_RUNTIME) compose
+    else
+        COMPOSE_CMD := echo "No compose tool found. Please install docker-compose or podman-compose." && false
+    endif
+endif
+
+# Check if compose is available
+HAS_COMPOSE := $(shell $(COMPOSE_CMD) version >/dev/null 2>&1 && echo "yes" || echo "no")
+
+# Default target
+help: ## Show this help message
+	@echo "Mock Discord API Server"
+	@echo "Container Runtime: $(CONTAINER_RUNTIME)"
+	@echo "Compose Command: $(COMPOSE_CMD)"
+	@echo "Available targets:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# Development targets
+deps: ## Download Go dependencies
+	go mod download
+	go mod tidy
+
+build: ## Build the mock server binary
+	go build -o mock-discord .
+
+run: ## Run the mock server locally
+	go run .
+
+test: ## Run unit tests
+	go test -v ./...
+
+# Container targets
+container-build: ## Build container image
+	$(CONTAINER_RUNTIME) build -t mock-discord:latest .
+
+container-run: ## Run mock server in container
+	$(COMPOSE_CMD) up -d mock-discord
+
+container-stop: ## Stop containers
+	$(COMPOSE_CMD) down
+
+container-logs: ## Show container logs
+	$(COMPOSE_CMD) logs -f mock-discord
+
+# Docker aliases (for compatibility and CI)
+docker-build: container-build ## Alias for container-build
+docker-run: container-run ## Alias for container-run  
+docker-stop: container-stop ## Alias for container-stop
+docker-logs: container-logs ## Alias for container-logs
+
+# Testing targets
+test-env-up: ## Start test environment
+	$(COMPOSE_CMD) -f docker-compose.test.yml up -d mock-discord
+
+test-env-down: ## Stop test environment
+	$(COMPOSE_CMD) -f docker-compose.test.yml down
+
+test-acceptance: ## Run acceptance tests
+	@echo "Acceptance tests not yet implemented."
+	@echo "Mock server is available for manual testing at:"
+	@echo "  REST API: http://localhost:18080/health"
+	@echo "  Gateway:  ws://localhost:18080/gateway"
+	@echo "  Voice:    localhost:18081"
+
+# Health and monitoring
+health: ## Check server health
+	@curl -s http://localhost:8080/health || echo "Server not responding"
+
+status: ## Show container status
+	$(COMPOSE_CMD) ps
+
+# Cleanup targets
+clean: ## Clean up build artifacts
+	rm -f mock-discord
+	go clean
+
+clean-containers: ## Clean up container resources
+	$(COMPOSE_CMD) down -v
+	$(COMPOSE_CMD) -f docker-compose.test.yml down -v
+	$(CONTAINER_RUNTIME) image prune -f
+
+clean-docker: clean-containers ## Alias for clean-containers
+
+# Development workflow
+dev: deps build run ## Full development setup
+
+# CI/CD targets
+ci-test: container-build test-env-up ## CI test pipeline
+	@echo "Waiting for mock server to be ready..."
+	@timeout 30 bash -c 'until curl -s http://localhost:18080/health > /dev/null; do sleep 1; done'
+	@echo "Mock server is running and healthy at http://localhost:18080"
+	@echo "Testing basic endpoints..."
+	@curl -s http://localhost:18080/health || echo "Health check failed"
+	@echo "Acceptance tests not yet implemented - manual testing available"
+	$(MAKE) test-env-down
+
+# Quick commands
+up: container-run ## Alias for container-run
+down: container-stop ## Alias for container-stop
+restart: down up ## Restart containers
