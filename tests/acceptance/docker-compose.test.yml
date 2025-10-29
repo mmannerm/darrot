@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  mock-discord:
+    image: mock-discord:test
+    container_name: mock-discord-${COMPOSE_PROJECT_NAME:-darrot-test}
+    ports:
+      - "8080:8080"  # HTTP API
+      - "8081:8081"  # WebSocket Gateway
+    environment:
+      - MOCK_DISCORD_HTTP_PORT=8080
+      - MOCK_DISCORD_WS_PORT=8081
+      - MOCK_DISCORD_LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - darrot-test
+
+  darrot-bot:
+    image: darrot:test
+    container_name: darrot-bot-${COMPOSE_PROJECT_NAME:-darrot-test}
+    depends_on:
+      mock-discord:
+        condition: service_healthy
+    environment:
+      - DISCORD_TOKEN=test_token_123
+      - DISCORD_API_BASE=http://mock-discord:8080
+      - DISCORD_GATEWAY_URL=ws://mock-discord:8081
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/test-credentials.json
+      - TTS_ENABLED=true
+      - LOG_LEVEL=debug
+    volumes:
+      - test-data:/app/data
+      - test-results:/app/results
+    networks:
+      - darrot-test
+    command: ["--config", "/app/test-config.yaml"]
+
+  acceptance-tests:
+    image: acceptance-tests:test
+    container_name: acceptance-tests-${COMPOSE_PROJECT_NAME:-darrot-test}
+    depends_on:
+      - mock-discord
+      - darrot-bot
+    environment:
+      - MOCK_DISCORD_URL=http://mock-discord:8080
+      - DARROT_BOT_URL=http://darrot-bot:8080
+      - TEST_SUITE=${TEST_SUITE:-all}
+      - TEST_TIMEOUT=${TEST_TIMEOUT:-300s}
+      - RESULTS_DIR=/app/results
+    volumes:
+      - test-results:/app/results
+    networks:
+      - darrot-test
+
+volumes:
+  test-data:
+    driver: local
+  test-results:
+    driver: local
+
+networks:
+  darrot-test:
+    driver: bridge

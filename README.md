@@ -244,40 +244,60 @@ Once the bot is running and invited to your server:
 
 ## Development
 
+### Makefile-Based Development Workflow
+
+The project uses a Makefile with dependency tracking for efficient development:
+
+```bash
+# Show all available targets
+make help
+
+# Build and test everything
+make all
+
+# Build container with dependency tracking (only rebuilds when needed)
+make container-build
+
+# Run quick container validation
+make container-test-quick
+
+# Run full container structure tests
+make container-test
+
+# Run acceptance tests
+make acceptance-test
+
+# Check build status
+make status
+```
+
 ### Running Tests
 
 #### Unit Tests Only
 ```bash
+make test
+# or
 go test ./... -short
 ```
 
-#### All Tests (Including Integration)
+#### All Tests (Unit + Container + Acceptance)
 ```bash
-# Set test bot token for integration tests
-export DISCORD_TEST_TOKEN="your_test_bot_token"
-go test ./...
+make test-all
 ```
 
-#### Using Test Scripts
+#### Container Tests
 ```bash
-# Linux/macOS
-./scripts/run-integration-tests.sh
+# Quick container validation
+make container-test-quick
 
+# Full container structure tests
+make container-test
 
+# Acceptance tests with mock Discord server
+make acceptance-test
 ```
 
-For detailed testing information, see [docs/testing.md](docs/testing.md).
-
-#### Container Acceptance Tests
-```bash
-# Test container build and functionality
-./test-container.sh
-
-
-
-# Manual Podman test
-bash tests/container/acceptance_test.sh
-```
+For detailed testing information, see [docs/testing.md](docs/testing.md) and [docs/makefile-container-testing.md](docs/makefile-container-testing.md).
 
 ### Code Formatting
 ```bash

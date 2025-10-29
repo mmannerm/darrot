@@ -17,6 +17,9 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Build artifacts and stamps
+.build-stamps/
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
@@ -36,3 +39,6 @@ darrot-config.toml
 /darrot
 
 data/
+
+# Test results and artifacts
+tests/results/
