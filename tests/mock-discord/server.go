@@ -172,6 +172,13 @@ func (s *MockDiscordServer) SetupRoutes(router *mux.Router) {
 
 	// Health check endpoint
 	router.HandleFunc("/health", s.healthCheck).Methods("GET")
+
+	// Additional endpoints for acceptance testing
+	api.HandleFunc("/guilds", s.createGuild).Methods("POST")
+	api.HandleFunc("/channels", s.createChannel).Methods("POST")
+	api.HandleFunc("/users", s.createUser).Methods("POST")
+	api.HandleFunc("/interactions", s.createInteraction).Methods("POST")
+	api.HandleFunc("/interactions", s.getInteractions).Methods("GET")
 }
 
 // authMiddleware simulates Discord API authentication
@@ -475,4 +482,127 @@ func (s *MockDiscordServer) Reset() {
 
 	s.interactions = make([]Interaction, 0)
 	s.setupTestData()
+}
+
+// createGuild handles POST /guilds
+func (s *MockDiscordServer) createGuild(w http.ResponseWriter, r *http.Request) {
+	var guildData struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&guildData); err != nil {
+		http.Error(w, `{"message": "Invalid JSON", "code": 50109}`, http.StatusBadRequest)
+		return
+	}
+
+	guild := &Guild{
+		ID:       guildData.ID,
+		Name:     guildData.Name,
+		Channels: make(map[string]*Channel),
+		Members:  make(map[string]*User),
+	}
+
+	s.mu.Lock()
+	s.guilds[guild.ID] = guild
+	s.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(guild)
+}
+
+// createChannel handles POST /channels
+func (s *MockDiscordServer) createChannel(w http.ResponseWriter, r *http.Request) {
+	var channelData struct {
+		ID      string      `json:"id"`
+		Name    string      `json:"name"`
+		Type    ChannelType `json:"type"`
+		GuildID string      `json:"guild_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&channelData); err != nil {
+		http.Error(w, `{"message": "Invalid JSON", "code": 50109}`, http.StatusBadRequest)
+		return
+	}
+
+	channel := &Channel{
+		ID:       channelData.ID,
+		Name:     channelData.Name,
+		Type:     channelData.Type,
+		GuildID:  channelData.GuildID,
+		Messages: make([]Message, 0),
+	}
+
+	s.mu.Lock()
+	s.channels[channel.ID] = channel
+	if guild, exists := s.guilds[channelData.GuildID]; exists {
+		guild.Channels[channel.ID] = channel
+	}
+	s.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(channel)
+}
+
+// createUser handles POST /users
+func (s *MockDiscordServer) createUser(w http.ResponseWriter, r *http.Request) {
+	var userData struct {
+		ID            string `json:"id"`
+		Username      string `json:"username"`
+		Discriminator string `json:"discriminator"`
+		Bot           bool   `json:"bot"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
+		http.Error(w, `{"message": "Invalid JSON", "code": 50109}`, http.StatusBadRequest)
+		return
+	}
+
+	user := &User{
+		ID:            userData.ID,
+		Username:      userData.Username,
+		Discriminator: userData.Discriminator,
+		Bot:           userData.Bot,
+	}
+
+	s.mu.Lock()
+	s.users[user.ID] = user
+	s.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(user)
+}
+
+// createInteraction handles POST /interactions
+func (s *MockDiscordServer) createInteraction(w http.ResponseWriter, r *http.Request) {
+	var interaction Interaction
+
+	if err := json.NewDecoder(r.Body).Decode(&interaction); err != nil {
+		http.Error(w, `{"message": "Invalid JSON", "code": 50109}`, http.StatusBadRequest)
+		return
+	}
+
+	interaction.ID = fmt.Sprintf("interaction-%d", time.Now().UnixNano())
+
+	s.mu.Lock()
+	s.interactions = append(s.interactions, interaction)
+	s.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(interaction)
+}
+
+// getInteractions handles GET /interactions
+func (s *MockDiscordServer) getInteractions(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	interactions := make([]Interaction, len(s.interactions))
+	copy(interactions, s.interactions)
+	s.mu.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(interactions)
 }
