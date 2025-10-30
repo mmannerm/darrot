@@ -302,8 +302,8 @@ make container-test-quick
 # Full container structure tests
 make container-test
 
-# Acceptance tests with mock Discord server
-make acceptance-test
+# Note: Acceptance tests are currently limited due to discordgo's hardcoded endpoints
+# make acceptance-test
 ```
 
 For detailed testing information, see [docs/testing.md](docs/testing.md) and [docs/makefile-container-testing.md](docs/makefile-container-testing.md).
