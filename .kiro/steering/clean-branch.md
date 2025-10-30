@@ -32,6 +32,8 @@ go mod tidy          # Clean up dependencies
 - `data/` directory - Runtime user configurations
 - Compiled binaries (`darrot.exe`, `darrot`)
 - Coverage reports (`coverage.out`, `coverage.html`)
+- Test results
+- Intermediary markdown files
 
 ### Always Include
 - Test files (`*_test.go`) for all new functionality

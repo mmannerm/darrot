@@ -75,35 +75,60 @@
   - Add health checks and service dependency management
   - _Requirements: 4.1, 4.5_
 
-- [ ] 3. Build acceptance test suite framework
+- [x] 3. Build acceptance test suite framework with Makefile-based container testing
+
+
+
+
+
   - Create Go test suite structure for orchestrating bot testing scenarios
   - Implement test scenario interfaces and execution framework
   - Add test result collection and reporting mechanisms
+  - **COMPLETED**: Converted container testing to use Makefile with proper dependency tracking to avoid unnecessary rebuilds
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 4.3, 4.4_
 
-- [ ] 3.1 Create test suite orchestration framework
+- [x] 3.1 Create test suite orchestration framework
+
+
   - Implement test scenario interface and execution engine
   - Create bot instance management for test isolation
   - Add test environment setup and cleanup automation
   - _Requirements: 2.1, 4.3_
 
-- [ ] 3.2 Implement core bot functionality test scenarios
+- [x] 3.2 Implement core bot functionality test scenarios
+
+
   - Create tests for darrot-join and darrot-leave command execution
   - Implement TTS message processing validation tests
   - Add configuration command testing scenarios
   - _Requirements: 2.3, 2.4, 2.7_
 
-- [ ] 3.3 Add multi-user and concurrent testing scenarios
+- [x] 3.3 Add multi-user and concurrent testing scenarios
+
+
   - Implement simultaneous user message processing tests
   - Create voice channel user management simulation tests
   - Add permission and role-based access control testing
   - _Requirements: 3.1, 3.3_
 
-- [ ] 3.4 Create error scenario and resilience testing
+- [x] 3.4 Create error scenario and resilience testing
+
+
   - Implement network failure and reconnection testing
   - Add rate limiting simulation and bot response validation
   - Create invalid command and error handling tests
   - _Requirements: 2.6, 3.4, 3.5, 3.7_
+
+- [x] 3.5 Convert container testing to Makefile-based system with dependency tracking
+
+
+  - **COMPLETED**: Replaced shell script-based container testing with Makefile system
+  - Added proper dependency tracking using timestamp files to avoid unnecessary rebuilds
+  - Created separate targets for container build, mock Discord server, and acceptance tests
+  - Implemented efficient Podman/Docker compatibility with automatic runtime detection
+  - Added build status tracking and debugging targets for development workflow
+  - **Note**: Acceptance tests require mock Discord server authentication configuration (separate task)
+  - _Requirements: 4.1, 4.5_
 
 - [ ] 4. Implement audio processing validation system
   - Create audio capture and analysis tools for TTS validation
