@@ -252,6 +252,12 @@ The project uses a Makefile with dependency tracking for efficient development:
 # Show all available targets
 make help
 
+# Format code automatically
+make fmt
+
+# Run linting (includes formatting check, go vet, golangci-lint)
+make lint
+
 # Build and test everything
 make all
 
@@ -269,6 +275,9 @@ make acceptance-test
 
 # Check build status
 make status
+
+# Run pre-commit checks (format + lint + test)
+make pre-commit
 ```
 
 ### Running Tests

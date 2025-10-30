@@ -58,11 +58,30 @@ test-coverage: test ## Run tests and generate coverage report
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
+.PHONY: fmt
+fmt: ## Format Go code
+	@echo "Formatting Go code..."
+	gofmt -s -w .
+	@echo "Code formatting completed"
+
 .PHONY: lint
 lint: ## Run linting tools
-	go fmt ./...
+	@echo "Checking code formatting..."
+	@if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then \
+		echo "Code is not formatted properly:"; \
+		gofmt -s -l .; \
+		echo "Run 'make fmt' to fix formatting issues"; \
+		exit 1; \
+	fi
+	@echo "Running go vet..."
 	go vet ./...
-	@if command -v golangci-lint >/dev/null 2>&1; then golangci-lint run; else echo "golangci-lint not found, skipping"; fi
+	@echo "Running golangci-lint..."
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "Error: golangci-lint is required but not installed"; \
+		echo "Install it with: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$$(go env GOPATH)/bin v1.54.2"; \
+		exit 1; \
+	fi
+	golangci-lint run
 
 .PHONY: clean
 clean: ## Clean build artifacts
@@ -205,7 +224,7 @@ dev-setup: container-test-install ## Set up development environment
 	@echo "Development environment ready!"
 
 .PHONY: pre-commit
-pre-commit: lint test ## Run pre-commit checks
+pre-commit: fmt lint test ## Run pre-commit checks
 	@echo "Pre-commit checks passed!"
 
 # Debug and maintenance targets

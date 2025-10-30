@@ -96,6 +96,12 @@ make container-test
 
 ### Development Workflow
 ```bash
+# Format code automatically
+make fmt
+
+# Run linting (includes formatting check, go vet, golangci-lint)
+make lint
+
 # Check what needs to be built
 make status
 
@@ -107,6 +113,9 @@ make container-test-quick
 
 # Run all tests
 make test-all
+
+# Run pre-commit checks (format + lint + test)
+make pre-commit
 ```
 
 ### CI/CD Integration
